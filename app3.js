@@ -11,7 +11,7 @@ let SipDomain = 'pbx-2.testd.com'; // eg: raspberrypi.local
 let SipUsername = 'User1'; // eg: webrtc
 let SipPassword = '1234'; // eg: webrtc
 
-const appversion = '0.3.29';
+const appversion = '3.2';
 const sipjsversion = '0.20.0';
 const navUserAgent = window.navigator.userAgent;
 const localDB = window.localStorage;
@@ -97,6 +97,8 @@ let lang = {};
 let audioBlobs = {};
 
 $(document).ready(function () {
+  // add version
+  $('#version').html(appversion);
   var username = localStorage.getItem(LS_USERNAME);
   if (username) {
     SipUsername = username;
