@@ -11,6 +11,7 @@ const appversion = '2.9';
 let userAgent = null;
 let inviteSession = null;
 
+let audioBlobs = {};
 let ringMedia = null;
 
 const inviterOptions = {
@@ -41,8 +42,8 @@ $(document).ready(function () {
 });
 
 function PreloadAudioFiles() {
-  audioBlobs.Ringtone = { file: 'Ringtone_1.mp3', url: hostingPrefix + 'media/Ringtone_1.mp3' };
-  audioBlobs.EarlyMedia_European = { file: 'Tone_EarlyMedia-European.mp3', url: hostingPrefix + 'media/Tone_EarlyMedia-European.mp3' };
+  audioBlobs.Ringtone = { file: 'Ringtone_1.mp3', url: 'media/Ringtone_1.mp3' };
+  audioBlobs.EarlyMedia_UK = { file: 'Tone_EarlyMedia-UK.mp3', url: 'media/Tone_EarlyMedia-UK.mp3' };
 
   $.each(audioBlobs, function (i, item) {
     var oReq = new XMLHttpRequest();
@@ -243,11 +244,11 @@ function onInviteProgress(response) {
   // 199 = Call is Terminated (Early Dialog)
 
   if (response.message.statusCode == 180) {
-    ringMedia = new Audio(audioBlobs.EarlyMedia_European.blob);
+    ringMedia = new Audio(audioBlobs.EarlyMedia_UK.blob);
     ringMedia.preload = 'auto';
     ringMedia.loop = true;
     ringMedia.oncanplaythrough = function (e) {
-      ringMedia.play().then();
+      ringMedia?.play().then();
     };
   }
 }
@@ -265,7 +266,7 @@ function ReceiveCall(session) {
   ringMedia.preload = 'auto';
   ringMedia.loop = true;
   ringMedia.oncanplaythrough = function (e) {
-    ringMedia.play();
+    ringMedia?.play();
   };
   // Session Delegates
   inviteSession.delegate = {
