@@ -11,7 +11,7 @@ let SipDomain = 'pbx-2.testd.com'; // eg: raspberrypi.local
 let SipUsername = 'User1'; // eg: webrtc
 let SipPassword = '1234'; // eg: webrtc
 
-const appversion = '3.6';
+const appversion = '3.7';
 const sipjsversion = '0.20.0';
 const navUserAgent = window.navigator.userAgent;
 const localDB = window.localStorage;
@@ -2310,96 +2310,6 @@ window.setInterval(function () {
   DetectDevices();
 }, 10000);
 
-function onSessionDescriptionHandlerCreated(lineObj, sdh, provisional, includeVideo) {
-  if (sdh) {
-    if (sdh.peerConnection) {
-      // console.log(sdh);
-      sdh.peerConnection.ontrack = function (event) {
-        // console.log(event);
-        onTrackAddedEvent(lineObj, includeVideo);
-      };
-      // sdh.peerConnectionDelegate = {
-      //     ontrack: function(event){
-      //         console.log(event);
-      //         onTrackAddedEvent(lineObj, includeVideo);
-      //     }
-      // }
-    } else {
-      console.warn('onSessionDescriptionHandler fired without a peerConnection');
-    }
-  } else {
-    console.warn('onSessionDescriptionHandler fired without a sessionDescriptionHandler');
-  }
-}
-function onInviteTrying(lineObj, response) {
-  $('#line-' + lineObj.LineNumber + '-msg').html(lang.trying);
-
-  // Custom Web hook
-  if (typeof web_hook_on_modify !== 'undefined') web_hook_on_modify('trying', lineObj.SipSession);
-}
-function onInviteProgress(lineObj, response) {
-  console.log('Call Progress:', response.message.statusCode);
-
-  // Provisional 1xx
-  // response.message.reasonPhrase
-  if (response.message.statusCode == 180) {
-    $('#line-' + lineObj.LineNumber + '-msg').html(lang.ringing);
-
-    var soundFile = audioBlobs.EarlyMedia_European;
-    if (UserLocale().indexOf('us') > -1) soundFile = audioBlobs.EarlyMedia_US;
-    if (UserLocale().indexOf('gb') > -1) soundFile = audioBlobs.EarlyMedia_UK;
-    if (UserLocale().indexOf('au') > -1) soundFile = audioBlobs.EarlyMedia_Australia;
-    if (UserLocale().indexOf('jp') > -1) soundFile = audioBlobs.EarlyMedia_Japan;
-
-    // Play Early Media
-    console.log('Audio:', soundFile?.url);
-    if (lineObj.SipSession.data.earlyMedia) {
-      // There is already early media playing
-      // onProgress can be called multiple times
-      // Don't add it again
-      console.log('Early Media already playing');
-    } else {
-      var earlyMedia = new Audio(soundFile.blob);
-      earlyMedia.preload = 'auto';
-      earlyMedia.loop = true;
-      earlyMedia.oncanplaythrough = function (e) {
-        if (typeof earlyMedia.sinkId !== 'undefined' && getAudioOutputID() != 'default') {
-          earlyMedia
-            .setSinkId(getAudioOutputID())
-            .then(function () {
-              console.log('Set sinkId to:', getAudioOutputID());
-            })
-            .catch(function (e) {
-              console.warn('Failed not apply setSinkId.', e);
-            });
-        }
-        earlyMedia
-          .play()
-          .then(function () {
-            // Audio Is Playing
-          })
-          .catch(function (e) {
-            console.warn('Unable to play audio file.', e);
-          });
-      };
-      lineObj.SipSession.data.earlyMedia = earlyMedia;
-    }
-  } else if (response.message.statusCode === 183) {
-    $('#line-' + lineObj.LineNumber + '-msg').html(response.message.reasonPhrase + '...');
-
-    // Add UI to allow DTMF
-    $('#line-' + lineObj.LineNumber + '-early-dtmf').show();
-  } else {
-    // 181 = Call is Being Forwarded
-    // 182 = Call is queued (Busy server!)
-    // 199 = Call is Terminated (Early Dialog)
-
-    $('#line-' + lineObj.LineNumber + '-msg').html(response.message.reasonPhrase + '...');
-  }
-
-  // Custom Web hook
-  if (typeof web_hook_on_modify !== 'undefined') web_hook_on_modify('progress', lineObj.SipSession);
-}
 function AudioCall(lineObj, dialledNumber) {
   if (userAgent == null) return;
   if (lineObj == null) return;
@@ -2496,6 +2406,97 @@ function AudioCall(lineObj, dialledNumber) {
   lineObj.SipSession.invite(inviterOptions).catch(function (e) {
     console.warn('Failed to send INVITE:', e);
   });
+}
+
+function onSessionDescriptionHandlerCreated(lineObj, sdh, provisional, includeVideo) {
+  if (sdh) {
+    if (sdh.peerConnection) {
+      // console.log(sdh);
+      sdh.peerConnection.ontrack = function (event) {
+        // console.log(event);
+        onTrackAddedEvent(lineObj, includeVideo);
+      };
+      // sdh.peerConnectionDelegate = {
+      //     ontrack: function(event){
+      //         console.log(event);
+      //         onTrackAddedEvent(lineObj, includeVideo);
+      //     }
+      // }
+    } else {
+      console.warn('onSessionDescriptionHandler fired without a peerConnection');
+    }
+  } else {
+    console.warn('onSessionDescriptionHandler fired without a sessionDescriptionHandler');
+  }
+}
+function onInviteTrying(lineObj, response) {
+  $('#line-' + lineObj.LineNumber + '-msg').html(lang.trying);
+
+  // Custom Web hook
+  if (typeof web_hook_on_modify !== 'undefined') web_hook_on_modify('trying', lineObj.SipSession);
+}
+function onInviteProgress(lineObj, response) {
+  console.log('Call Progress:', response.message.statusCode);
+
+  // Provisional 1xx
+  // response.message.reasonPhrase
+  if (response.message.statusCode == 180) {
+    $('#line-' + lineObj.LineNumber + '-msg').html(lang.ringing);
+
+    var soundFile = audioBlobs.EarlyMedia_European;
+    if (UserLocale().indexOf('us') > -1) soundFile = audioBlobs.EarlyMedia_US;
+    if (UserLocale().indexOf('gb') > -1) soundFile = audioBlobs.EarlyMedia_UK;
+    if (UserLocale().indexOf('au') > -1) soundFile = audioBlobs.EarlyMedia_Australia;
+    if (UserLocale().indexOf('jp') > -1) soundFile = audioBlobs.EarlyMedia_Japan;
+
+    // Play Early Media
+    console.log('Audio:', soundFile?.url);
+    if (lineObj.SipSession.data.earlyMedia) {
+      // There is already early media playing
+      // onProgress can be called multiple times
+      // Don't add it again
+      console.log('Early Media already playing');
+    } else {
+      var earlyMedia = new Audio(soundFile.blob);
+      earlyMedia.preload = 'auto';
+      earlyMedia.loop = true;
+      earlyMedia.oncanplaythrough = function (e) {
+        if (typeof earlyMedia.sinkId !== 'undefined' && getAudioOutputID() != 'default') {
+          earlyMedia
+            .setSinkId(getAudioOutputID())
+            .then(function () {
+              console.log('Set sinkId to:', getAudioOutputID());
+            })
+            .catch(function (e) {
+              console.warn('Failed not apply setSinkId.', e);
+            });
+        }
+        earlyMedia
+          .play()
+          .then(function () {
+            // Audio Is Playing
+          })
+          .catch(function (e) {
+            console.warn('Unable to play audio file.', e);
+          });
+      };
+      lineObj.SipSession.data.earlyMedia = earlyMedia;
+    }
+  } else if (response.message.statusCode === 183) {
+    $('#line-' + lineObj.LineNumber + '-msg').html(response.message.reasonPhrase + '...');
+
+    // Add UI to allow DTMF
+    $('#line-' + lineObj.LineNumber + '-early-dtmf').show();
+  } else {
+    // 181 = Call is Being Forwarded
+    // 182 = Call is queued (Busy server!)
+    // 199 = Call is Terminated (Early Dialog)
+
+    $('#line-' + lineObj.LineNumber + '-msg').html(response.message.reasonPhrase + '...');
+  }
+
+  // Custom Web hook
+  if (typeof web_hook_on_modify !== 'undefined') web_hook_on_modify('progress', lineObj.SipSession);
 }
 
 function onTrackAddedEvent(lineObj, includeVideo) {
