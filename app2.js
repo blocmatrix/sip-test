@@ -6,7 +6,7 @@ let sipUrl = 'pbx-2.testd.com';
 let SipUsername = 'User1';
 let SipPassword = '1234';
 
-const appversion = '2.11';
+const appversion = '2.12';
 
 let userAgent = null;
 let inviteSession = null;
@@ -144,7 +144,7 @@ function RejectCall() {
     inviteSession.bye().catch(function (e) {
       console.warn('Problem in RejectCall(), could not bye() call', e, inviteSession);
     });
-  } else {
+  } else if (inviteSession.reject) {
     inviteSession
       .reject({
         statusCode: 486,
@@ -245,6 +245,7 @@ function onInviteProgress(response) {
   // 199 = Call is Terminated (Early Dialog)
 
   if (response.message.statusCode == 180) {
+    stopRing();
     ringMedia = new Audio(audioBlobs.EarlyMedia_UK.blob);
     ringMedia.preload = 'auto';
     ringMedia.loop = true;
@@ -263,6 +264,7 @@ function ReceiveCall(session) {
   // add buttons
   AddLineHtml();
   // ring
+  stopRing();
   ringMedia = new Audio(audioBlobs.Ringtone.blob);
   ringMedia.preload = 'auto';
   ringMedia.loop = true;
