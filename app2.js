@@ -6,7 +6,7 @@ let sipUrl = 'pbx-2.testd.com';
 let SipUsername = 'User1';
 let SipPassword = '1234';
 
-const appversion = '2.5';
+const appversion = '2.6';
 
 let userAgent = null;
 let inviteSession = null;
@@ -156,21 +156,6 @@ function RejectCall() {
 
 function DialByLine() {
   AddLineHtml();
-  // devices
-  var supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
-  var spdOptions = {
-    earlyMedia: true,
-    sessionDescriptionHandlerOptions: {
-      constraints: {
-        audio: { deviceId: 'default' },
-        video: false,
-      },
-    },
-  };
-  // Add additional Constraints
-  if (supportedConstraints.autoGainControl) spdOptions.sessionDescriptionHandlerOptions.constraints.audio.autoGainControl = true;
-  if (supportedConstraints.echoCancellation) spdOptions.sessionDescriptionHandlerOptions.constraints.audio.echoCancellation = true;
-  if (supportedConstraints.noiseSuppression) spdOptions.sessionDescriptionHandlerOptions.constraints.audio.noiseSuppression = true;
   // make Target
   const target = SIP.UserAgent.makeURI(getUserAgentUri(dialText));
   // create inviter
@@ -181,15 +166,16 @@ function DialByLine() {
   inviteSession.delegate = {
     onBye: function (sip) {
       console.log(sip, '----------------sip in onBye');
-      // onSessionReceivedBye(lineObj, sip);
+      inviteSession.accept();
+      teardownSession();
     },
     onMessage: function (sip) {
       console.log(sip, '----------------sip in onMessage');
-      // onSessionReceivedMessage(lineObj, sip);
+      // onSessionReceivedMessage(sip);
     },
     onInvite: function (sip) {
       console.log(sip, '----------------sip in onInvite');
-      // onSessionReinvited(lineObj, sip);
+      // onSessionReinvited(sip);
     },
     onSessionDescriptionHandler: function (sdh, provisional) {
       console.log(sdh, provisional, ' -----------------sdh, provisional in onSessionDescriptionHandler');
@@ -202,22 +188,22 @@ function DialByLine() {
       // OutgoingRequestDelegate
       onTrying: function (sip) {
         console.log(sip, '----------------sip in onTrying');
-        // onInviteTrying(lineObj, sip);
+        // onInviteTrying(sip);
       },
       onProgress: function (sip) {
         console.log(sip, '----------------sip in onProgress');
-        // onInviteProgress(lineObj, sip);
+        // onInviteProgress(sip);
       },
       onRedirect: function (sip) {
         console.log(sip, '----------------sip in onRedirect');
-        // onInviteRedirected(lineObj, sip);
+        // onInviteRedirected(sip);
       },
       onAccept: function (sip) {
         onInviteAccepted(sip);
       },
       onReject: function (sip) {
         console.log(sip, '----------------sip in onReject');
-        // onInviteRejected(lineObj, sip);
+        // onInviteRejected(sip);
       },
     },
   };
@@ -288,15 +274,16 @@ function ReceiveCall(session) {
   inviteSession.delegate = {
     onBye: function (sip) {
       console.log(sip, '----------------sip in onBye');
-      // onSessionReceivedBye(lineObj, sip);
+      inviteSession.accept();
+      teardownSession();
     },
     onMessage: function (sip) {
       console.log(sip, '----------------sip in onMessage');
-      // onSessionReceivedMessage(lineObj, sip);
+      // onSessionReceivedMessage(sip);
     },
     onInvite: function (sip) {
       console.log(sip, '----------------sip in onInvite');
-      // onSessionReinvited(lineObj, sip);
+      // onSessionReinvited(sip);
     },
     onSessionDescriptionHandler: function (sdh, provisional) {
       console.log(sdh, provisional, ' -----------------sdh, provisional in onSessionDescriptionHandler');
