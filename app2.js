@@ -6,10 +6,21 @@ let sipUrl = 'pbx-2.testd.com';
 let SipUsername = 'User1';
 let SipPassword = '1234';
 
-const appversion = '2.8';
+const appversion = '2.9';
 
 let userAgent = null;
 let inviteSession = null;
+
+let ringMedia = null;
+
+const inviterOptions = {
+  sessionDescriptionHandlerOptions: {
+    constraints: {
+      audio: { deviceId: 'default' },
+      video: false,
+    },
+  },
+};
 
 $(document).ready(function () {
   // add version
@@ -25,7 +36,28 @@ $(document).ready(function () {
     dialText = lsDialText;
     $('#dialText').val(lsDialText);
   }
+
+  PreloadAudioFiles();
 });
+
+function PreloadAudioFiles() {
+  audioBlobs.Ringtone = { file: 'Ringtone_1.mp3', url: hostingPrefix + 'media/Ringtone_1.mp3' };
+  audioBlobs.EarlyMedia_European = { file: 'Tone_EarlyMedia-European.mp3', url: hostingPrefix + 'media/Tone_EarlyMedia-European.mp3' };
+
+  $.each(audioBlobs, function (i, item) {
+    var oReq = new XMLHttpRequest();
+    oReq.open('GET', item.url, true);
+    oReq.responseType = 'blob';
+    oReq.onload = function (oEvent) {
+      var reader = new FileReader();
+      reader.readAsDataURL(oReq.response);
+      reader.onload = function () {
+        item.blob = reader.result;
+      };
+    };
+    oReq.send();
+  });
+}
 
 function makeRegister() {
   if ($('#username').val()) {
@@ -101,7 +133,8 @@ function AddLineHtml() {
 }
 
 function AnswerAudioCall() {
-  inviteSession.accept();
+  stopRing();
+  inviteSession.accept(inviterOptions);
 }
 
 function RejectCall() {
@@ -127,7 +160,7 @@ function DialByLine() {
   // make Target
   const target = SIP.UserAgent.makeURI(getUserAgentUri(dialText));
   // create inviter
-  inviteSession = new SIP.Inviter(userAgent, target);
+  inviteSession = new SIP.Inviter(userAgent, target, inviterOptions);
   inviteSession.stateChange.addListener((newState) => {
     console.log(newState, '---------newState');
   });
@@ -146,11 +179,16 @@ function DialByLine() {
   var inviterOptions = {
     requestDelegate: {
       onTrying: function (sip) {},
-      onProgress: function (sip) {},
       onRedirect: function (sip) {},
-      onReject: function (sip) {},
+      onProgress: function (sip) {
+        onInviteProgress(sip);
+      },
       onAccept: function (sip) {
         onInviteAccepted(sip);
+      },
+      onReject: function (sip) {
+        if (sip.message) alert(sip.message);
+        teardownSession();
       },
     },
   };
@@ -196,14 +234,39 @@ function onSessionDescriptionHandlerCreated(sessionDescriptionHandler) {
     // error
   }
 }
+function onInviteProgress(response) {
+  console.log('Call Progress:', response.message.statusCode);
+  // 180 = Call is Ringing
+  // 181 = Call is Being Forwarded
+  // 182 = Call is queued (Busy server!)
+  // 183 = Check!
+  // 199 = Call is Terminated (Early Dialog)
+
+  if (response.message.statusCode == 180) {
+    ringMedia = new Audio(audioBlobs.EarlyMedia_European.blob);
+    ringMedia.preload = 'auto';
+    ringMedia.loop = true;
+    ringMedia.oncanplaythrough = function (e) {
+      ringMedia.play().then();
+    };
+  }
+}
 
 function onInviteAccepted(session) {
-  console.log('---------onInviteAccepted');
+  stopRing();
 }
 
 function ReceiveCall(session) {
   inviteSession = session;
+  // add buttons
   AddLineHtml();
+  // ring
+  ringMedia = new Audio(audioBlobs.Ringtone.blob);
+  ringMedia.preload = 'auto';
+  ringMedia.loop = true;
+  ringMedia.oncanplaythrough = function (e) {
+    ringMedia.play();
+  };
   // Session Delegates
   inviteSession.delegate = {
     onMessage: function (sip) {},
@@ -231,7 +294,16 @@ function endSession() {
   teardownSession();
 }
 
+function stopRing() {
+  if (ringMedia) {
+    ringMedia.pause();
+    ringMedia.load();
+    ringMedia = null;
+  }
+}
+
 function teardownSession() {
   console.log('teardownSession');
   $('#Phone').empty();
+  stopRing();
 }
