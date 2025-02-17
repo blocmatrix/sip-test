@@ -51,6 +51,7 @@ function register() {
     uri: SIP.UserAgent.makeURI(getUserAgentUri(SipUsername)),
     transportOptions: {
       server: `wss://${sipUrl}:4443/ws`,
+      traceSip: false,
     },
     authorizationUsername: SipUsername,
     authorizationPassword: SipPassword,
