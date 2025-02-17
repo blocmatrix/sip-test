@@ -166,7 +166,7 @@ function DialByLine() {
   inviteSession.delegate = {
     onBye: function (sip) {
       console.log(sip, '----------------sip in onBye');
-      inviteSession.accept();
+      sip.accept();
       teardownSession();
     },
     onMessage: function (sip) {
@@ -274,7 +274,7 @@ function ReceiveCall(session) {
   inviteSession.delegate = {
     onBye: function (sip) {
       console.log(sip, '----------------sip in onBye');
-      inviteSession.accept();
+      sip.accept();
       teardownSession();
     },
     onMessage: function (sip) {
