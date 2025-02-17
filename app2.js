@@ -6,7 +6,7 @@ let sipUrl = 'pbx-2.testd.com';
 let SipUsername = 'User1';
 let SipPassword = '1234';
 
-const appversion = '2.10';
+const appversion = '2.11';
 
 let userAgent = null;
 let inviteSession = null;
@@ -101,6 +101,7 @@ function register() {
   // check fo state change
   registerer.stateChange.addListener((newState) => {
     console.log('User Agent Registration State:', newState);
+    $('#regStatus').html(newState);
   });
 
   // Start the user agent
