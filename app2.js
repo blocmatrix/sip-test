@@ -324,17 +324,43 @@ function onTrackAddedEvent() {
   }
 }
 
-function ReceiveCall(session) {
-  inviteSession = session;
-  AddLineHtml();
-}
-
 function onInviteAccepted(session) {
   console.log('---------onInviteAccepted');
 }
 
+function ReceiveCall(session) {
+  inviteSession = session;
+  AddLineHtml();
+  // Session Delegates
+  inviteSession.delegate = {
+    onBye: function (sip) {
+      console.log(sip, '----------------sip in onBye');
+      // onSessionReceivedBye(lineObj, sip);
+    },
+    onMessage: function (sip) {
+      console.log(sip, '----------------sip in onMessage');
+      // onSessionReceivedMessage(lineObj, sip);
+    },
+    onInvite: function (sip) {
+      console.log(sip, '----------------sip in onInvite');
+      // onSessionReinvited(lineObj, sip);
+    },
+    onSessionDescriptionHandler: function (sdh, provisional) {
+      console.log(sdh, provisional, ' -----------------sdh, provisional in onSessionDescriptionHandler');
+      onSessionDescriptionHandlerCreated(sdh, provisional);
+    },
+  };
+  // incomingInviteRequestDelegate
+  inviteSession.incomingInviteRequest.delegate = {
+    onCancel: function (sip) {
+      console.log(sip, '----------------sip in onCancel');
+      endSession();
+    },
+  };
+}
+
 function endSession() {
-  inviteSession.bye().catch(function (e) {
+  inviteSession?.bye().catch(function (e) {
     console.warn('Failed to bye the session!', e);
   });
   teardownSession();
