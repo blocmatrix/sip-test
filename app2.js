@@ -216,6 +216,7 @@ function onSessionDescriptionHandlerCreated(sessionDescriptionHandler) {
       // Attach Audio
       if (remoteAudioStream.getAudioTracks().length >= 1) {
         var remoteAudio = $('#line-remoteAudio').get(0);
+        console.log(remoteAudio, '-----------remoteAudio');
         remoteAudio.srcObject = remoteAudioStream;
         remoteAudio.onloadedmetadata = function (e) {
           if (typeof remoteAudio.sinkId !== 'undefined') {
