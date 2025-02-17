@@ -6,7 +6,7 @@ let sipUrl = 'pbx-2.testd.com';
 let SipUsername = 'User1';
 let SipPassword = '1234';
 
-const appversion = '2.6';
+const appversion = '2.7';
 
 let userAgent = null;
 let inviteSession = null;
