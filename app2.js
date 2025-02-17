@@ -123,17 +123,42 @@ function onRegistered() {
 
 function AddLineHtml() {
   let html = '';
-  // html += '<div style="display:none;">';
-  // html += '<audio id="line-' + lineObj.LineNumber + '-remoteAudio"></audio>';
-  // html += '</div>';
+  html += '<div style="display:none;">';
+  html += '<audio id="line-remoteAudio"></audio>';
+  html += '</div>';
 
-  html += '<button onclick="AnswerAudioCall()" class=answerButton><i class="fa fa-phone"></i> Answer Call </button> ';
+  html += '<button onclick="AnswerAudioCall()" class=answerButton><i class="fa fa-phone"></i> Answer Call </button>';
+  html +=
+    '<button onclick="RejectCall()" class=rejectButton><i class="fa fa-phone" style="transform: rotate(135deg);"></i> Reject Call </button>';
 
   $('#Phone').append(html);
 }
 
 function AnswerAudioCall() {
   inviteSession.accept();
+}
+
+function RejectCall() {
+  if (inviteSession.state == SIP.SessionState.Established) {
+    inviteSession.bye().catch(function (e) {
+      console.warn('Problem in RejectCall(), could not bye() call', e, inviteSession);
+    });
+  } else {
+    inviteSession
+      .reject({
+        statusCode: 486,
+        reasonPhrase: 'Busy Here',
+      })
+      .catch(function (e) {
+        console.warn('Problem in RejectCall(), could not reject() call', e, inviteSession);
+      });
+  }
+  $('#Phone').empty();
+  teardownSession();
+}
+
+function teardownSession() {
+  console.log('teardownSession');
 }
 
 function DialByLine() {
