@@ -5520,6 +5520,34 @@ function onSessionReceivedBye(lineObj, response) {
 
   teardownSession(lineObj);
 }
+function onInviteRejected(lineObj, response) {
+  console.log('INVITE Rejected:', response.message.reasonPhrase);
+
+  lineObj.SipSession.data.terminateby = 'them';
+  lineObj.SipSession.data.reasonCode = response.message.statusCode;
+  lineObj.SipSession.data.reasonText = response.message.reasonPhrase;
+
+  teardownSession(lineObj);
+}
+function cancelSession(lineNum) {
+  var lineObj = FindLineByNumber(lineNum);
+  if (lineObj == null || lineObj.SipSession == null) return;
+
+  lineObj.SipSession.data.terminateby = 'us';
+  lineObj.SipSession.data.reasonCode = 0;
+  lineObj.SipSession.data.reasonText = 'Call Cancelled';
+
+  console.log('Cancelling session : ' + lineNum);
+  if (lineObj.SipSession.state == SIP.SessionState.Initial || lineObj.SipSession.state == SIP.SessionState.Establishing) {
+    lineObj.SipSession.cancel();
+  } else {
+    console.warn('Session not in correct state for cancel.', lineObj.SipSession.state);
+    console.log('Attempting teardown : ' + lineNum);
+    teardownSession(lineObj);
+  }
+
+  $('#line-' + lineNum + '-msg').html(lang.call_cancelled);
+}
 function teardownSession(lineObj) {
   if (lineObj == null || lineObj.SipSession == null) return;
 
@@ -5862,7 +5890,46 @@ function CloseLine(lineNum) {
   // Change to Stream if in Narrow view
   UpdateUI();
 }
+function onInviteCancel(lineObj, response) {
+  // Remote Party Canceled while ringing...
 
+  // Check to see if this call has been completed elsewhere
+  // https://github.com/InnovateAsterisk/Browser-Phone/issues/405
+  var temp_cause = 0;
+  var reason = response.headers['Reason'];
+  if (reason !== undefined && reason.length > 0) {
+    for (var i = 0; i < reason.length; i++) {
+      var cause = reason[i].raw.toLowerCase().trim(); // Reason: Q.850 ;cause=16 ;text="Terminated"
+      var items = cause.split(';');
+      if (
+        items.length >= 2 &&
+        (items[0].trim() == 'sip' || items[0].trim() == 'q.850') &&
+        items[1].includes('cause') &&
+        cause.includes('call completed elsewhere')
+      ) {
+        temp_cause = parseInt(items[1].substring(items[1].indexOf('=') + 1).trim());
+        // No sample provided for "token"
+        break;
+      }
+    }
+  }
+
+  lineObj.SipSession.data.terminateby = 'them';
+  lineObj.SipSession.data.reasonCode = temp_cause;
+  if (temp_cause == 0) {
+    lineObj.SipSession.data.reasonText = 'Call Cancelled';
+    console.log('Call canceled by remote party before answer');
+  } else {
+    lineObj.SipSession.data.reasonText = 'Call completed elsewhere';
+    console.log('Call completed elsewhere before answer');
+  }
+
+  lineObj.SipSession.dispose().catch(function (error) {
+    console.log('Failed to dispose the cancel dialog', error);
+  });
+
+  teardownSession(lineObj);
+}
 // ============================================================ Inbound ======================================================================
 // Inbound Calls
 // =============

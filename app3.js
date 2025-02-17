@@ -11,7 +11,7 @@ let SipDomain = 'pbx-2.testd.com'; // eg: raspberrypi.local
 let SipUsername = 'User1'; // eg: webrtc
 let SipPassword = '1234'; // eg: webrtc
 
-const appversion = '3.3';
+const appversion = '3.4';
 const sipjsversion = '0.20.0';
 const navUserAgent = window.navigator.userAgent;
 const localDB = window.localStorage;
@@ -458,7 +458,7 @@ class SoundMeter {
       SendPacketRate: this.SendPacketRate,
     };
     if (this.sessionId != null) {
-      SaveQosData(QosData, this.sessionId, lineObj.BuddyObj.identity);
+      SaveQosData(QosData, this.sessionId, lineObj.BuddyObj?.identity);
     }
   }
 }
@@ -1478,36 +1478,8 @@ function CleanupBuddies() {
   }
 }
 function AddLineHtml(lineObj, direction) {
-  var avatar = getPicture(lineObj.BuddyObj.identity);
-
-  var html = '<table id="line-ui-' + lineObj.LineNumber + '" class=stream cellspacing=0 cellpadding=0>';
-  html += '<tr><td class="streamSection highlightSection" style="height: 85px;">';
-
-  // Close|Return|Back Button
-  html += '<div style="float:left; margin:0px; padding:5px; height:38px; line-height:38px">';
-  html +=
-    '<button id="line-' +
-    lineObj.LineNumber +
-    '-btn-back" onclick="CloseLine(\'' +
-    lineObj.LineNumber +
-    '\')" class=roundButtons title="' +
-    lang.back +
-    '"><i class="fa fa-chevron-left"></i></button> ';
-  html += '</div>';
-
-  // Profile UI
-  html += '<div class=contact style="cursor: unset; float: left;">';
-  html += '<div id="line-ui-' + lineObj.LineNumber + '-LineIcon" class=lineIcon>' + lineObj.LineNumber + '</div>';
-  html +=
-    '<div id="line-ui-' +
-    lineObj.LineNumber +
-    '-DisplayLineNo" class=contactNameText><i class="fa fa-phone"></i> ' +
-    lang.line +
-    ' ' +
-    lineObj.LineNumber +
-    '</div>';
-  html += '<div class=presenceText style="max-width:150px">' + lineObj.DisplayNumber + '</div>';
-  html += '</div>';
+  var avatar = 'avatars/default.5.webp';
+  var html = '';
 
   // Audio Activity
   html += '<div style="float:right; line-height: 46px;">';
@@ -1521,35 +1493,16 @@ function AddLineHtml(lineObj, direction) {
   html += '<span id="line-' + lineObj.LineNumber + '-Speaker" class=meterLevel style="height:0%"></span>';
   html += '</span> ';
   html += '</div>';
-
   html += '</div>';
-
-  // Separator --------------------------------------------------------------------------
-  html += '<div style="clear:both; height:0px"></div>';
-
-  // General Messages
-  html += '<div id="line-' + lineObj.LineNumber + '-timer" class=CallTimer></div>';
-  html += '<div id="line-' + lineObj.LineNumber + '-msg" class=callStatus style="display:none">...</div>';
 
   // Remote Audio Object
   html += '<div style="display:none;">';
   html += '<audio id="line-' + lineObj.LineNumber + '-remoteAudio"></audio>';
   html += '</div>';
 
-  html += '</td></tr>';
-
-  // Next Has Dynamic Content
-  html += '<tr><td id="line-' + lineObj.LineNumber + '-call-fullscreen" class="streamSection highlightSection">';
-
   // Call Answer UI
-  html += '<div id="line-' + lineObj.LineNumber + '-AnswerCall" style="display:none">';
-  html += '<div class="CallPictureUnderlay" style="background-image: url(\'' + avatar + '\')"></div>';
-  html += '<div class="CallColorUnderlay"></div>';
-  html += '<div class="CallUi">';
   html += '<div class=callingDisplayName>' + lineObj.DisplayName + '</div>';
   html += '<div class=callingDisplayNumber>' + lineObj.DisplayNumber + '</div>';
-  html +=
-    '<div id="line-' + lineObj.LineNumber + '-in-avatar" class="inCallAvatar" style="background-image: url(\'' + avatar + '\')"></div>';
   html += '<div class=answerCall>';
   html +=
     '<button onclick="AnswerAudioCall(\'' +
@@ -1557,219 +1510,17 @@ function AddLineHtml(lineObj, direction) {
     '\')" class=answerButton><i class="fa fa-phone"></i> ' +
     lang.answer_call +
     '</button> ';
-  if (EnableVideoCalling == true) {
-    html +=
-      ' <button id="line-' +
-      lineObj.LineNumber +
-      '-answer-video" onclick="AnswerVideoCall(\'' +
-      lineObj.LineNumber +
-      '\')" class=answerButton><i class="fa fa-video-camera"></i> ' +
-      lang.answer_call_with_video +
-      '</button> ';
-  }
   html +=
     ' <button onclick="RejectCall(\'' +
     lineObj.LineNumber +
     '\')" class=rejectButton><i class="fa fa-phone" style="transform: rotate(135deg);"></i> ' +
     lang.reject_call +
     '</button> ';
-  // CRM
-  html += '<div id="line-' + lineObj.LineNumber + '-answer-crm-space">';
-  // Use this DIV for anything really. Call your own CRM, and have the results display here
-  html += '</div>'; // crm
-  html += '</div>'; //.answerCall
-
-  html += '</div>'; //.CallUi
-  html += '</div>'; //-AnswerCall
-
-  // Dialing Out Progress
-  html += '<div id="line-' + lineObj.LineNumber + '-progress" style="display:none">';
-  html += '<div class="CallPictureUnderlay" style="background-image: url(\'' + avatar + '\')"></div>';
-  html += '<div class="CallColorUnderlay"></div>';
-  html += '<div class="CallUi">';
-  html += '<div class=callingDisplayName>' + lineObj.DisplayName + '</div>';
-  html += '<div class=callingDisplayNumber>' + lineObj.DisplayNumber + '</div>';
-  html +=
-    '<div id="line-' + lineObj.LineNumber + '-out-avatar" class="inCallAvatar" style="background-image: url(\'' + avatar + '\')"></div>';
-  html += '<div class=progressCall>';
-  html +=
-    '<button onclick="cancelSession(\'' +
-    lineObj.LineNumber +
-    '\')" class=rejectButton><i class="fa fa-phone" style="transform: rotate(135deg);"></i> ' +
-    lang.cancel +
-    '</button>';
-  html +=
-    ' <button id="line-' +
-    lineObj.LineNumber +
-    '-early-dtmf" onclick="ShowDtmfMenu(\'' +
-    lineObj.LineNumber +
-    '\')" style="display:none"><i class="fa fa-keyboard-o"></i> ' +
-    lang.send_dtmf +
-    '</button>';
-  html += '</div>'; //.progressCall
-  html += '</div>'; //.CallUi
-  html += '</div>'; // -progress
-
-  // Active Call UI
-  html +=
-    '<div id="line-' +
-    lineObj.LineNumber +
-    '-ActiveCall" class=cleanScroller style="display:none; position: absolute; top: 0px; left: 0px; height: 100%; width: 100%;">';
-
-  // Audio or Video Call (gets changed with InCallControls)
-  html += '<div id="line-' + lineObj.LineNumber + '-AudioOrVideoCall" style="height:100%">';
-
-  // Audio Call UI
-  html += '<div id="line-' + lineObj.LineNumber + '-AudioCall" style="height:100%; display:none">';
-  html += '<div class="CallPictureUnderlay" style="background-image: url(\'' + avatar + '\')"></div>';
-  html += '<div class="CallColorUnderlay"></div>';
-  html += '<div class="CallUi">';
-  html += '<div class=callingDisplayName>' + lineObj.DisplayName + '</div>';
-  html += '<div class=callingDisplayNumber>' + lineObj.DisplayNumber + '</div>';
-  html +=
-    '<div id="line-' +
-    lineObj.LineNumber +
-    '-session-avatar" class="inCallAvatar" style="background-image: url(\'' +
-    avatar +
-    '\')"></div>';
-
-  // Call Transfer
-  html += '<div id="line-' + lineObj.LineNumber + '-Transfer" style="text-align: center; line-height:40px; display:none">';
-  html += '<div style="margin-top:10px">';
-  html +=
-    '<span class=searchClean><input id="line-' +
-    lineObj.LineNumber +
-    '-txt-FindTransferBuddy" oninput="QuickFindBuddy(this,\'' +
-    lineObj.LineNumber +
-    '\')" onkeydown="transferOnkeydown(event, this, \'' +
-    lineObj.LineNumber +
-    '\')" type=text autocomplete=none style="width:150px;" autocomplete=none placeholder="' +
-    lang.search_or_enter_number +
-    '"></span>';
-  html += '<br>';
-  html +=
-    ' <button id="line-' +
-    lineObj.LineNumber +
-    '-btn-blind-transfer" onclick="BlindTransfer(\'' +
-    lineObj.LineNumber +
-    '\')"><i class="fa fa-reply" style="transform: rotateY(180deg)"></i> ' +
-    lang.blind_transfer +
-    '</button>';
-  html +=
-    ' <button id="line-' +
-    lineObj.LineNumber +
-    '-btn-attended-transfer" onclick="AttendedTransfer(\'' +
-    lineObj.LineNumber +
-    '\')"><i class="fa fa-reply-all" style="transform: rotateY(180deg)"></i> ' +
-    lang.attended_transfer +
-    '</button>';
-  html +=
-    ' <button id="line-' +
-    lineObj.LineNumber +
-    '-btn-complete-attended-transfer" style="display:none"><i class="fa fa-reply-all" style="transform: rotateY(180deg)"></i> ' +
-    lang.complete_transfer +
-    '</button>';
-  html +=
-    ' <button id="line-' +
-    lineObj.LineNumber +
-    '-btn-cancel-attended-transfer" style="display:none"><i class="fa fa-phone" style="transform: rotate(135deg);"></i> ' +
-    lang.cancel_transfer +
-    '</button>';
-  html +=
-    ' <button id="line-' +
-    lineObj.LineNumber +
-    '-btn-terminate-attended-transfer" style="display:none"><i class="fa fa-phone" style="transform: rotate(135deg);"></i> ' +
-    lang.end_transfer_call +
-    '</button>';
   html += '</div>';
-  html += '<div id="line-' + lineObj.LineNumber + '-transfer-status" class=callStatus style="margin-top:10px; display:none">...</div>';
-  html += '<audio id="line-' + lineObj.LineNumber + '-transfer-remoteAudio" style="display:none"></audio>';
-  html += '</div>'; //-Transfer
-
-  // Call Conference
-  html += '<div id="line-' + lineObj.LineNumber + '-Conference" style="text-align: center; line-height:40px; display:none">';
-  html += '<div style="margin-top:10px">';
-  html +=
-    '<span class=searchClean><input id="line-' +
-    lineObj.LineNumber +
-    '-txt-FindConferenceBuddy" oninput="QuickFindBuddy(this,\'' +
-    lineObj.LineNumber +
-    '\')" onkeydown="conferenceOnkeydown(event, this, \'' +
-    lineObj.LineNumber +
-    '\')" type=text autocomplete=none style="width:150px;" autocomplete=none placeholder="' +
-    lang.search_or_enter_number +
-    '"></span>';
-  html += '<br>';
-  html +=
-    ' <button id="line-' +
-    lineObj.LineNumber +
-    '-btn-conference-dial" onclick="ConferenceDial(\'' +
-    lineObj.LineNumber +
-    '\')"><i class="fa fa-phone"></i> ' +
-    lang.call +
-    '</button>';
-  html +=
-    ' <button id="line-' +
-    lineObj.LineNumber +
-    '-btn-cancel-conference-dial" style="display:none"><i class="fa fa-phone" style="transform: rotate(135deg);"></i> ' +
-    lang.cancel_call +
-    '</button>';
-  html +=
-    ' <button id="line-' +
-    lineObj.LineNumber +
-    '-btn-join-conference-call" style="display:none"><i class="fa fa-users"></i> ' +
-    lang.join_conference_call +
-    '</button>';
-  html +=
-    ' <button id="line-' +
-    lineObj.LineNumber +
-    '-btn-terminate-conference-call" style="display:none"><i class="fa fa-phone" style="transform: rotate(135deg);"></i> ' +
-    lang.end_conference_call +
-    '</button>';
-  html += '</div>';
-  html += '<div id="line-' + lineObj.LineNumber + '-conference-status" class=callStatus style="margin-top:10px; display:none">...</div>';
-  html += '<audio id="line-' + lineObj.LineNumber + '-conference-remoteAudio" style="display:none"></audio>';
-  html += '</div>'; //-Conference
-
-  // CRM
-  html += '<div id="line-' + lineObj.LineNumber + '-active-audio-call-crm-space">';
-  // Use this DIV for anything really. Call your own CRM, and have the results display here
-  html += '</div>'; // crm
-
-  html += '</div>'; //.CallUi
-  html += '</div>'; //AudioCall
-
-  // Video Call UI
-  html += '<div id="line-' + lineObj.LineNumber + '-VideoCall" style="height:100%; display:none">';
-  // Video Preview
-  html += '<div id="line-' + lineObj.LineNumber + '-preview-container" class="PreviewContainer cleanScroller">';
-  html += '<video id="line-' + lineObj.LineNumber + '-localVideo" muted playsinline></video>'; // Default Display
-  html += '</div>';
-
-  // Stage
-  html += '<div id="line-' + lineObj.LineNumber + '-stage-container" class=StageContainer>';
-  html += '<div id="line-' + lineObj.LineNumber + '-remote-videos" class=VideosContainer></div>';
-  html += '<div id="line-' + lineObj.LineNumber + '-scratchpad-container" class=ScratchpadContainer style="display:none"></div>';
-  html +=
-    '<video id="line-' +
-    lineObj.LineNumber +
-    '-sharevideo" controls muted playsinline style="display:none; object-fit: contain; width: 100%;"></video>';
-  html += '</div>';
-  html += '</div>'; //-VideoCall
-  html += '</div>'; //-AudioOrVideoCall
 
   // In Call Control
   // ===============
   html += '<div class=CallControlContainer>';
-  html += '<div class=CallControl>';
-  html +=
-    '<div><button id="line-' +
-    lineObj.LineNumber +
-    '-btn-ControlToggle" onclick="ToggleMoreButtons(\'' +
-    lineObj.LineNumber +
-    '\')" style="font-size:24px; width:80px"><i class="fa fa-chevron-up"></i></button></div>';
-  // Visible Row
-  html += '<div>';
   // Mute
   html +=
     '<button id="line-' +
@@ -1804,52 +1555,6 @@ function AddLineHtml(lineObj, direction) {
     '\')" class="roundButtons dialButtons inCallButtons" title="' +
     lang.resume_call +
     '" style="color: red; display:none"><i class="fa fa-play-circle"></i></button>';
-
-  if (direction == 'outbound') {
-    // DTMF
-    html +=
-      '<button id="line-' +
-      lineObj.LineNumber +
-      '-btn-ShowDtmf" onclick="ShowDtmfMenu(\'' +
-      lineObj.LineNumber +
-      '\')" class="roundButtons dialButtons inCallButtons" title="' +
-      lang.send_dtmf +
-      '"><i class="fa fa-keyboard-o"></i></button>';
-  } else {
-    // Transfer (Audio Only)
-    if (EnableTransfer) {
-      html +=
-        '<button id="line-' +
-        lineObj.LineNumber +
-        '-btn-Transfer" onclick="StartTransferSession(\'' +
-        lineObj.LineNumber +
-        '\')" class="roundButtons dialButtons inCallButtons" title="' +
-        lang.transfer_call +
-        '"><i class="fa fa-reply" style="transform: rotateY(180deg)"></i></button>';
-      html +=
-        '<button id="line-' +
-        lineObj.LineNumber +
-        '-btn-CancelTransfer" onclick="CancelTransferSession(\'' +
-        lineObj.LineNumber +
-        '\')" class="roundButtons dialButtons inCallButtons" title="' +
-        lang.cancel_transfer +
-        '" style="color: red; display:none"><i class="fa fa-reply" style="transform: rotateY(180deg)"></i></button>';
-    }
-  }
-
-  // Expand UI (Video Only)
-  html +=
-    '<button id="line-' +
-    lineObj.LineNumber +
-    '-btn-expand" onclick="ExpandVideoArea(\'' +
-    lineObj.LineNumber +
-    '\')" class="roundButtons dialButtons inCallButtons"><i class="fa fa-expand"></i></button>';
-  html +=
-    '<button id="line-' +
-    lineObj.LineNumber +
-    '-btn-restore" onclick="RestoreVideoArea(\'' +
-    lineObj.LineNumber +
-    '\')" class="roundButtons dialButtons inCallButtons" style="display:none"><i class="fa fa-compress"></i></button>';
   // End Call
   html +=
     '<button id="line-' +
@@ -1860,190 +1565,8 @@ function AddLineHtml(lineObj, direction) {
     lang.end_call +
     '"><i class="fa fa-phone" style="transform: rotate(135deg);"></i></button>';
   html += '</div>';
-  // Row two (Hidden By Default)
-  html += '<div id="line-' + lineObj.LineNumber + '-btn-more" style="display:none">';
-  // Record
-  if (typeof MediaRecorder != 'undefined' && (CallRecordingPolicy == 'allow' || CallRecordingPolicy == 'enabled')) {
-    // Safari: must enable in Develop > Experimental Features > MediaRecorder
-    html +=
-      '<button id="line-' +
-      lineObj.LineNumber +
-      '-btn-start-recording" onclick="StartRecording(\'' +
-      lineObj.LineNumber +
-      '\')" class="roundButtons dialButtons inCallButtons" title="' +
-      lang.start_call_recording +
-      '"><i class="fa fa-dot-circle-o"></i></button>';
-    html +=
-      '<button id="line-' +
-      lineObj.LineNumber +
-      '-btn-stop-recording" onclick="StopRecording(\'' +
-      lineObj.LineNumber +
-      '\')" class="roundButtons dialButtons inCallButtons" title="' +
-      lang.stop_call_recording +
-      '" style="color: red; display:none"><i class="fa fa-circle"></i></button>';
-  }
-  // Conference
-  if (EnableConference) {
-    html +=
-      '<button id="line-' +
-      lineObj.LineNumber +
-      '-btn-Conference" onclick="StartConferenceCall(\'' +
-      lineObj.LineNumber +
-      '\')" class="roundButtons dialButtons inCallButtons" title="' +
-      lang.conference_call +
-      '"><i class="fa fa-users"></i></button>';
-    html +=
-      '<button id="line-' +
-      lineObj.LineNumber +
-      '-btn-CancelConference" onclick="CancelConference(\'' +
-      lineObj.LineNumber +
-      '\')" class="roundButtons dialButtons inCallButtons" title="' +
-      lang.cancel_conference +
-      '" style="color: red; display:none"><i class="fa fa-users"></i></button>';
-  }
-  if (direction == 'outbound') {
-    // Transfer (Audio Only)
-    if (EnableTransfer) {
-      html +=
-        '<button id="line-' +
-        lineObj.LineNumber +
-        '-btn-Transfer" onclick="StartTransferSession(\'' +
-        lineObj.LineNumber +
-        '\')" class="roundButtons dialButtons inCallButtons" title="' +
-        lang.transfer_call +
-        '"><i class="fa fa-reply" style="transform: rotateY(180deg)"></i></button>';
-      html +=
-        '<button id="line-' +
-        lineObj.LineNumber +
-        '-btn-CancelTransfer" onclick="CancelTransferSession(\'' +
-        lineObj.LineNumber +
-        '\')" class="roundButtons dialButtons inCallButtons" title="' +
-        lang.cancel_transfer +
-        '" style="color: red; display:none"><i class="fa fa-reply" style="transform: rotateY(180deg)"></i></button>';
-    }
-  } else {
-    // DTMF
-    html +=
-      '<button id="line-' +
-      lineObj.LineNumber +
-      '-btn-ShowDtmf" onclick="ShowDtmfMenu(\'' +
-      lineObj.LineNumber +
-      '\')" class="roundButtons dialButtons inCallButtons" title="' +
-      lang.send_dtmf +
-      '"><i class="fa fa-keyboard-o"></i></button>';
-  }
-  // Settings
-  html +=
-    '<button id="line-' +
-    lineObj.LineNumber +
-    '-btn-settings" onclick="ChangeSettings(\'' +
-    lineObj.LineNumber +
-    '\', this)" class="roundButtons dialButtons inCallButtons" title="' +
-    lang.device_settings +
-    '"><i class="fa fa-volume-up"></i></button>';
-  // Present
-  html +=
-    '<button id="line-' +
-    lineObj.LineNumber +
-    '-btn-present-src" onclick="ShowPresentMenu(this, \'' +
-    lineObj.LineNumber +
-    '\')" class="roundButtons dialButtons inCallButtons" title="' +
-    lang.camera +
-    '"><i class="fa fa-video-camera"></i></button>';
-  // Call Stats
-  html +=
-    '<button id="line-' +
-    lineObj.LineNumber +
-    '-btn-ShowCallStats" onclick="ShowCallStats(\'' +
-    lineObj.LineNumber +
-    '\')" class="roundButtons dialButtons inCallButtons" title="' +
-    lang.call_stats +
-    '"><i class="fa fa-area-chart"></i></button>';
-  html +=
-    '<button id="line-' +
-    lineObj.LineNumber +
-    '-btn-HideCallStats" onclick="HideCallStats(\'' +
-    lineObj.LineNumber +
-    '\')" class="roundButtons dialButtons inCallButtons" title="' +
-    lang.call_stats +
-    '" style="color: red; display:none"><i class="fa fa-area-chart"></i></button>';
-  // Call Timeline
-  html +=
-    '<button id="line-' +
-    lineObj.LineNumber +
-    '-btn-ShowTimeline" onclick="ShowCallTimeline(\'' +
-    lineObj.LineNumber +
-    '\')" class="roundButtons dialButtons inCallButtons" title="' +
-    lang.activity_timeline +
-    '"><i class="fa fa-list-ul"></i></button>';
-  html +=
-    '<button id="line-' +
-    lineObj.LineNumber +
-    '-btn-HideTimeline" onclick="HideCallTimeline(\'' +
-    lineObj.LineNumber +
-    '\')" class="roundButtons dialButtons inCallButtons" title="' +
-    lang.activity_timeline +
-    '" style="color: red; display:none"><i class="fa fa-list-ul"></i></button>';
-
-  html += '</div>'; // More Buttons Row
-  html += '</div>'; // .CallControl
-  html += '</div>'; // .CallControlContainer
-
-  // Screens - Note: They cannot occupy the same space.
-
-  // Call Stats
-  html += '<div id="line-' + lineObj.LineNumber + '-AudioStats" class="audioStats cleanScroller" style="display:none">';
-  html += '<div>';
-  html += '<div>' + lang.send_statistics + '</div>';
-  html +=
-    '<div style="position: relative; margin: auto; height: 160px; width: 100%;"><canvas id="line-' +
-    lineObj.LineNumber +
-    '-AudioSendBitRate" class=audioGraph></canvas></div>';
-  html +=
-    '<div style="position: relative; margin: auto; height: 160px; width: 100%;"><canvas id="line-' +
-    lineObj.LineNumber +
-    '-AudioSendPacketRate" class=audioGraph></canvas></div>';
-  html += '</div>';
-  html += '<div>';
-  html += '<div>' + lang.receive_statistics + '</div>';
-  html +=
-    '<div style="position: relative; margin: auto; height: 160px; width: 100%;"><canvas id="line-' +
-    lineObj.LineNumber +
-    '-AudioReceiveBitRate" class=audioGraph></canvas></div>';
-  html +=
-    '<div style="position: relative; margin: auto; height: 160px; width: 100%;"><canvas id="line-' +
-    lineObj.LineNumber +
-    '-AudioReceivePacketRate" class=audioGraph></canvas></div>';
-  html +=
-    '<div style="position: relative; margin: auto; height: 160px; width: 100%;"><canvas id="line-' +
-    lineObj.LineNumber +
-    '-AudioReceivePacketLoss" class=audioGraph></canvas></div>';
-  html +=
-    '<div style="position: relative; margin: auto; height: 160px; width: 100%;"><canvas id="line-' +
-    lineObj.LineNumber +
-    '-AudioReceiveJitter" class=audioGraph></canvas></div>';
-  html +=
-    '<div style="position: relative; margin: auto; height: 160px; width: 100%;"><canvas id="line-' +
-    lineObj.LineNumber +
-    '-AudioReceiveLevels" class=audioGraph></canvas></div>';
-  html += '</div>';
-  html += '</div>';
-
-  // Call Timeline
-  html += '<div id="line-' + lineObj.LineNumber + '-CallDetails" class="callTimeline cleanScroller" style="display:none">';
-  // In Call Activity
-  html += '</div>';
-
-  html += '</div>'; // Active Call UI
-
-  html += '</td></tr>';
-  html += '</table>';
 
   $('#rightContent').append(html);
-
-  $('#line-' + lineObj.LineNumber + '-AudioOrVideoCall').on('click', function () {
-    RestoreCallControls(lineObj.LineNumber);
-  });
 }
 function SelectLine(lineNum) {
   var lineObj = FindLineByNumber(lineNum);
@@ -3002,7 +2525,7 @@ function AudioCall(lineObj, dialledNumber, extraHeaders) {
   lineObj.SipSession = new SIP.Inviter(userAgent, targetURI, spdOptions);
   lineObj.SipSession.data = {};
   lineObj.SipSession.data.line = lineObj.LineNumber;
-  lineObj.SipSession.data.buddyId = lineObj.BuddyObj.identity;
+  lineObj.SipSession.data.buddyId = lineObj.BuddyObj?.identity;
   lineObj.SipSession.data.calldirection = 'outbound';
   lineObj.SipSession.data.dst = dialledNumber;
   lineObj.SipSession.data.callstart = startTime.format('YYYY-MM-DD HH:mm:ss UTC');
@@ -3838,7 +3361,7 @@ function teardownSession(lineObj) {
   window.clearInterval(session.data.callTimer);
 
   // Add to stream
-  AddCallMessage(lineObj.BuddyObj.identity, session);
+  AddCallMessage(lineObj.BuddyObj?.identity, session);
 
   // Check if this call was missed
   if (session.data.calldirection == 'inbound') {
@@ -4112,138 +3635,27 @@ function CloseLine(lineNum) {
 // Inbound Calls
 // =============
 function ReceiveCall(session) {
+  console.log(session.remoteIdentity, '----------session.remoteIdentity');
+  console.log(session, '----------session');
   // First Determine Identity from From
   var callerID = session.remoteIdentity.displayName;
   var did = session.remoteIdentity.uri.user;
   if (typeof callerID === 'undefined') callerID = did;
 
-  var sipHeaders = session.incomingInviteRequest.message.headers;
-  // If a P-Asserted-Identity is parsed, use that
-  if (sipHeaders.hasOwnProperty('P-Asserted-Identity')) {
-    var rawUri = sipHeaders['P-Asserted-Identity'][0].raw;
-    if (rawUri.includes('<sip:')) {
-      var uriParts = rawUri.split('<sip:');
-      if (uriParts[1].endsWith('>')) uriParts[1] = uriParts[1].substring(0, uriParts[1].length - 1);
-      if (uriParts[1].endsWith('@' + SipDomain)) {
-        var assertId = SIP.UserAgent.makeURI('sip:' + uriParts[1]); // should be sip:123@domain.com
-        did = assertId.user;
-        console.log('Found P-Asserted-Identity, will use that to identify user:', did);
-      } else {
-        console.warn('Found P-Asserted-Identity but not in trust domain: ', rawUri);
-      }
-    } else {
-      console.warn('Found P-Asserted-Identity but not in a URI: ', rawUri);
-    }
-  }
-
   console.log('New Incoming Call!', callerID + ' <' + did + '>');
-
-  var CurrentCalls = countSessions(session.id);
-  console.log('Current Call Count:', CurrentCalls);
-
-  var buddyObj = FindBuddyByDid(did);
-  // Make new contact of its not there
-  if (buddyObj == null) {
-    var focusOnBuddy = CurrentCalls == 0;
-
-    // Check for Hints in Headers
-    // Buddy Create Hints: Parse any of the following Sip Headers to help create a buddy
-    // Note: SIP.js will make the header names Lowercase
-    var buddyType = did.length > DidLength ? 'contact' : 'extension';
-    // X-Buddytype: xmpp
-    if (sipHeaders.hasOwnProperty('X-Buddytype')) {
-      if (
-        sipHeaders['X-Buddytype'][0].raw == 'contact' ||
-        sipHeaders['X-Buddytype'][0].raw == 'extension' ||
-        sipHeaders['X-Buddytype'][0].raw == 'xmpp' ||
-        sipHeaders['X-Buddytype'][0].raw == 'group'
-      ) {
-        buddyType = sipHeaders['X-Buddytype'][0].raw;
-        console.log('Hint Header X-Buddytype:', buddyType);
-      } else {
-        console.warn('Hint Header X-Buddytype must either contact | extension | xmpp | group: ', sipHeaders['X-Buddytype'][0].raw);
-      }
-    }
-    var xmppJid = null;
-    // X-Xmppjid: bob@somedomain.com
-    if (buddyType == 'xmpp') {
-      if (sipHeaders.hasOwnProperty('X-Xmppjid')) {
-        if (sipHeaders['X-Xmppjid'][0].raw.endsWith('@' + XmppDomain)) {
-          xmppJid = sipHeaders['X-Xmppjid'][0].raw;
-          console.log('Hint Header X-Xmppjid:', xmppJid);
-        }
-      } else {
-        console.warn('Hint Header X-Xmppjid must end with @XmppDomain', sipHeaders['X-Xmppjid'][0].raw);
-      }
-    }
-    // X-Subscribeuser: sip:1000@somedomain.com
-    var subscribeToBuddy = false;
-    var subscribeUser = null;
-    if (sipHeaders.hasOwnProperty('X-Subscribeuser')) {
-      if (sipHeaders['X-Subscribeuser'][0].raw.startsWith('sip:') && sipHeaders['X-Subscribeuser'][0].raw.endsWith('@' + SipDomain)) {
-        subscribeUser = sipHeaders['X-Subscribeuser'][0].raw.substring(4, sipHeaders['X-Subscribeuser'][0].raw.indexOf('@'));
-        subscribeToBuddy = true;
-        console.log('Hint Header X-Subscribeuser:', subscribeUser);
-      } else {
-        console.warn('Hint Header X-Subscribeuser must start with sip: and end with @SipDomain', sipHeaders['X-Subscribeuser'][0].raw);
-      }
-    }
-    var allowDuringDnd = false;
-    // X-Allowduringdnd: yes
-    if (sipHeaders.hasOwnProperty('X-Allowduringdnd')) {
-      if (sipHeaders['X-Allowduringdnd'][0].raw == 'yes' || sipHeaders['X-Allowduringdnd'][0].raw == 'no') {
-        allowDuringDnd = sipHeaders['X-Allowduringdnd'][0].raw == 'yes';
-        console.log('Hint Header X-Allowduringdnd:', allowDuringDnd);
-      } else {
-        console.warn('Hint Header X-Allowduringdnd must yes | no :', sipHeaders['X-Allowduringdnd'][0].raw);
-      }
-    }
-    var autoDelete = AutoDeleteDefault;
-    // X-Autodelete: yes
-    if (sipHeaders.hasOwnProperty('X-Autodelete')) {
-      if (sipHeaders['X-Autodelete'][0].raw == 'yes' || sipHeaders['X-Autodelete'][0].raw == 'no') {
-        autoDelete = sipHeaders['X-Autodelete'][0].raw == 'yes';
-        console.log('Hint Header X-Autodelete:', autoDelete);
-      } else {
-        console.warn('Hint Header X-Autodelete must yes | no :', sipHeaders['X-Autodelete'][0].raw);
-      }
-    }
-
-    buddyObj = MakeBuddy(
-      buddyType,
-      true,
-      focusOnBuddy,
-      subscribeToBuddy,
-      callerID,
-      did,
-      xmppJid,
-      allowDuringDnd,
-      subscribeUser,
-      autoDelete,
-      true
-    );
-  } else {
-    // Double check that the buddy has the same caller ID as the incoming call
-    // With Buddies that are contacts, eg +441234567890 <+441234567890> leave as as
-    if (buddyObj.type == 'extension' && buddyObj.CallerIDName != callerID) {
-      UpdateBuddyCallerID(buddyObj, callerID);
-    } else if (buddyObj.type == 'contact' && callerID != did && buddyObj.CallerIDName != callerID) {
-      UpdateBuddyCallerID(buddyObj, callerID);
-    }
-  }
 
   var startTime = moment.utc();
 
   // Create the line and add the session so we can answer or reject it.
   newLineNumber = newLineNumber + 1;
-  var lineObj = new Line(newLineNumber, callerID, did, buddyObj);
+  var lineObj = new Line(newLineNumber, callerID, did);
   lineObj.SipSession = session;
   lineObj.SipSession.data = {};
   lineObj.SipSession.data.line = lineObj.LineNumber;
   lineObj.SipSession.data.calldirection = 'inbound';
   lineObj.SipSession.data.terminateby = '';
   lineObj.SipSession.data.src = did;
-  lineObj.SipSession.data.buddyId = lineObj.BuddyObj.identity;
+  // lineObj.SipSession.data.buddyId = lineObj.BuddyObj?.identity;
   lineObj.SipSession.data.callstart = startTime.format('YYYY-MM-DD HH:mm:ss UTC');
   lineObj.SipSession.data.callTimer = window.setInterval(function () {
     var now = moment.utc();
@@ -4303,17 +3715,10 @@ function ReceiveCall(session) {
       return;
     }
   }
-  if (CurrentCalls >= 1) {
-    if (CallWaitingEnabled == false || CallWaitingEnabled == 'disabled') {
-      console.log('Call Waiting Disabled, rejecting call.');
-      lineObj.SipSession.data.earlyReject = true;
-      RejectCall(lineObj.LineNumber, true);
-      return;
-    }
-  }
 
   // Create the call HTML
   AddLineHtml(lineObj, 'inbound');
+
   $('#line-' + lineObj.LineNumber + '-msg').html(lang.incoming_call);
   $('#line-' + lineObj.LineNumber + '-msg').show();
   $('#line-' + lineObj.LineNumber + '-timer').show();
@@ -4376,140 +3781,39 @@ function ReceiveCall(session) {
     }
   }
 
-  if (AutoAnswerEnabled || AutoAnswerPolicy == 'enabled' || autoAnswerRequested) {
-    if (CurrentCalls == 0) {
-      // There are no other calls, so you can answer
-      console.log('Going to Auto Answer this call...');
-      window.setTimeout(function () {
-        // If the call is with video, assume the auto answer is also
-        // In order for this to work nicely, the recipient maut be "ready" to accept video calls
-        // In order to ensure video call compatibility (i.e. the recipient must have their web cam in, and working)
-        // The NULL video should be configured
-        // https://github.com/InnovateAsterisk/Browser-Phone/issues/26
-        if (lineObj.SipSession.data.withvideo) {
-          AnswerVideoCall(lineObj.LineNumber);
-        } else {
-          AnswerAudioCall(lineObj.LineNumber);
-        }
-      }, answerTimeout);
-
-      // Select Buddy
-      SelectLine(lineObj.LineNumber);
-      return;
-    } else {
-      console.warn('Could not auto answer call, already on a call.');
-    }
-  }
-
-  // Check if that buddy is not already on a call??
-  var streamVisible = $('#stream-' + buddyObj.identity).is(':visible');
-  if (streamVisible || CurrentCalls == 0) {
-    // If you are already on the selected buddy who is now calling you, switch to his call.
-    // NOTE: This will put other calls on hold
-    if (CurrentCalls == 0) SelectLine(lineObj.LineNumber);
-  }
-
-  // Show notification / Ring / Windows Etc
-  // ======================================
-
-  // Browser Window Notification
-  if ('Notification' in window) {
-    if (Notification.permission === 'granted') {
-      var noticeOptions = { body: lang.incoming_call_from + ' ' + callerID + ' <' + did + '>', icon: getPicture(buddyObj.identity) };
-      var inComingCallNotification = new Notification(lang.incoming_call, noticeOptions);
-      inComingCallNotification.onclick = function (event) {
-        var lineNo = lineObj.LineNumber;
-        var videoInvite = lineObj.SipSession.data.withvideo;
-        window.setTimeout(function () {
-          // https://github.com/InnovateAsterisk/Browser-Phone/issues/26
-          if (videoInvite) {
-            AnswerVideoCall(lineNo);
-          } else {
-            AnswerAudioCall(lineNo);
-          }
-        }, 1000);
-
-        // Select Buddy
-        SelectLine(lineNo);
-        return;
-      };
-    }
-  }
-
   // Play Ring Tone if not on the phone
   if (EnableRingtone == true) {
-    if (CurrentCalls >= 1) {
-      // Play Alert
-      console.log('Audio:', audioBlobs.CallWaiting.url);
-      var ringer = new Audio(audioBlobs.CallWaiting.blob);
-      ringer.preload = 'auto';
-      ringer.loop = false;
-      ringer.oncanplaythrough = function (e) {
-        if (typeof ringer.sinkId !== 'undefined' && getRingerOutputID() != 'default') {
-          ringer
-            .setSinkId(getRingerOutputID())
-            .then(function () {
-              console.log('Set sinkId to:', getRingerOutputID());
-            })
-            .catch(function (e) {
-              console.warn('Failed not apply setSinkId.', e);
-            });
-        }
-        // If there has been no interaction with the page at all... this page will not work
+    // Play Ring Tone
+    console.log('Audio:', audioBlobs.Ringtone.url);
+    var ringer = new Audio(audioBlobs.Ringtone.blob);
+    ringer.preload = 'auto';
+    ringer.loop = true;
+    ringer.oncanplaythrough = function (e) {
+      if (typeof ringer.sinkId !== 'undefined' && getRingerOutputID() != 'default') {
         ringer
-          .play()
+          .setSinkId(getRingerOutputID())
           .then(function () {
-            // Audio Is Playing
+            console.log('Set sinkId to:', getRingerOutputID());
           })
           .catch(function (e) {
-            console.warn('Unable to play audio file.', e);
+            console.warn('Failed not apply setSinkId.', e);
           });
-      };
-      lineObj.SipSession.data.ringerObj = ringer;
-    } else {
-      // Play Ring Tone
-      console.log('Audio:', audioBlobs.Ringtone.url);
-      var ringer = new Audio(audioBlobs.Ringtone.blob);
-      ringer.preload = 'auto';
-      ringer.loop = true;
-      ringer.oncanplaythrough = function (e) {
-        if (typeof ringer.sinkId !== 'undefined' && getRingerOutputID() != 'default') {
-          ringer
-            .setSinkId(getRingerOutputID())
-            .then(function () {
-              console.log('Set sinkId to:', getRingerOutputID());
-            })
-            .catch(function (e) {
-              console.warn('Failed not apply setSinkId.', e);
-            });
-        }
-        // If there has been no interaction with the page at all... this page will not work
-        ringer
-          .play()
-          .then(function () {
-            // Audio Is Playing
-          })
-          .catch(function (e) {
-            console.warn('Unable to play audio file.', e);
-          });
-      };
-      lineObj.SipSession.data.ringerObj = ringer;
-    }
+      }
+      // If there has been no interaction with the page at all... this page will not work
+      ringer
+        .play()
+        .then(function () {
+          // Audio Is Playing
+        })
+        .catch(function (e) {
+          console.warn('Unable to play audio file.', e);
+        });
+    };
+    lineObj.SipSession.data.ringerObj = ringer;
   }
 
   // Custom Web hook
   if (typeof web_hook_on_invite !== 'undefined') web_hook_on_invite(session);
-}
-function countSessions(id) {
-  var rtn = 0;
-  if (userAgent == null) {
-    console.warn('userAgent is null');
-    return 0;
-  }
-  $.each(userAgent.sessions, function (i, session) {
-    if (id != session.id) rtn++;
-  });
-  return rtn;
 }
 function SelectBuddy(buddy) {
   var buddyObj = FindBuddyByIdentity(buddy);
