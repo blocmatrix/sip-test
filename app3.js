@@ -11,7 +11,7 @@ let SipDomain = 'pbx-2.testd.com'; // eg: raspberrypi.local
 let SipUsername = 'User1'; // eg: webrtc
 let SipPassword = '1234'; // eg: webrtc
 
-const appversion = '3.2';
+const appversion = '3.3';
 const sipjsversion = '0.20.0';
 const navUserAgent = window.navigator.userAgent;
 const localDB = window.localStorage;
@@ -178,93 +178,8 @@ function InitUi() {
   rightSection.attr('style', 'margin-left: 320px; height: 100%');
 
   phone.append(rightSection);
-
-  // Register Buttons
-  $('#reglink').on('click', Register);
-  $('#dereglink').on('click', Unregister);
 }
 
-function MeterSettingsOutput(audioStream, objectId, direction, interval) {
-  var soundMeter = new SoundMeter(null, null);
-  soundMeter.startTime = Date.now();
-  soundMeter.connectToSource(audioStream, function (e) {
-    if (e != null) return;
-
-    console.log('SoundMeter Connected, displaying levels to:' + objectId);
-    soundMeter.levelsInterval = window.setInterval(function () {
-      // Calculate Levels (0 - 255)
-      var instPercent = (soundMeter.instant / 255) * 100;
-      $('#' + objectId).css(direction, instPercent.toFixed(2) + '%');
-    }, interval);
-  });
-
-  return soundMeter;
-}
-function CloseUpSettings() {
-  // Video Preview
-  try {
-    settingsVideoStreamTrack.stop();
-    console.log('settingsVideoStreamTrack... stopped');
-  } catch (e) {}
-  try {
-    var localVideo = $('#local-video-preview').get(0);
-    localVideo.srcObject = null;
-  } catch {}
-  settingsVideoStream = null;
-
-  // Microphone Preview
-  try {
-    settingsMicrophoneStreamTrack.stop();
-    console.log('settingsMicrophoneStreamTrack... stopped');
-  } catch (e) {}
-  settingsMicrophoneStream = null;
-
-  // Microphone Meter
-  try {
-    settingsMicrophoneSoundMeter.stop();
-  } catch (e) {}
-  settingsMicrophoneSoundMeter = null;
-
-  // Speaker Preview
-  try {
-    window.SettingsOutputAudio.pause();
-  } catch (e) {}
-  window.SettingsOutputAudio = null;
-
-  try {
-    var tracks = window.SettingsOutputStream.getTracks();
-    tracks.forEach(function (track) {
-      track.stop();
-    });
-  } catch (e) {}
-  window.SettingsOutputStream = null;
-
-  try {
-    var soundMeter = window.SettingsOutputStreamMeter;
-    soundMeter.stop();
-  } catch (e) {}
-  window.SettingsOutputStreamMeter = null;
-
-  // Ringer Preview
-  try {
-    window.SettingsRingerAudio.pause();
-  } catch (e) {}
-  window.SettingsRingerAudio = null;
-
-  try {
-    var tracks = window.SettingsRingerStream.getTracks();
-    tracks.forEach(function (track) {
-      track.stop();
-    });
-  } catch (e) {}
-  window.SettingsRingerStream = null;
-
-  try {
-    var soundMeter = window.SettingsRingerStreamMeter;
-    soundMeter.stop();
-  } catch (e) {}
-  window.SettingsRingerStreamMeter = null;
-}
 function register() {
   var options = {
     logConfiguration: false, // If true, constructor logs the registerer configuration.
@@ -300,114 +215,49 @@ function register() {
     autoStop: true,
     register: false,
     noAnswerTimeout: NoAnswerTimeout,
-    // sipExtension100rel: // UNSUPPORTED | SUPPORTED | REQUIRED NOTE: rel100 is not supported
     contactParams: {},
     delegate: {
       onInvite: function (sip) {
         ReceiveCall(sip);
       },
-      onMessage: function (sip) {
-        ReceiveOutOfDialogMessage(sip);
-      },
+      // onMessage: function (sip) {
+      //   ReceiveOutOfDialogMessage(sip);
+      // },
     },
   };
-  if (IceStunServerJson != '') {
-    options.sessionDescriptionHandlerFactoryOptions.peerConnectionConfiguration.iceServers = JSON.parse(IceStunServerJson);
-  }
-
-  // Added to the contact BEFORE the '>' (permanent)
-  if (RegisterContactParams && RegisterContactParams != '' && RegisterContactParams != '{}') {
-    try {
-      options.contactParams = JSON.parse(RegisterContactParams);
-    } catch (e) {}
-  }
-  if (WssInTransport) {
-    try {
-      options.contactParams.transport = 'wss';
-    } catch (e) {}
-  }
-
-  // Add (Hardcode) other RTCPeerConnection({ rtcConfiguration }) config dictionary options here
-  // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/RTCPeerConnection
-  // Example:
-  // options.sessionDescriptionHandlerFactoryOptions.peerConnectionConfiguration.rtcpMuxPolicy = "require";
 
   userAgent = new SIP.UserAgent(options);
-  userAgent.isRegistered = function () {
-    return userAgent && userAgent.registerer && userAgent.registerer.state == SIP.RegistererState.Registered;
-  };
-  // For some reason this is marked as private... not sure why
-  userAgent.sessions = userAgent._sessions;
-  userAgent.registrationCompleted = false;
-  userAgent.registering = false;
-  userAgent.transport.ReconnectionAttempts = TransportReconnectionAttempts;
-  userAgent.transport.attemptingReconnection = false;
-  userAgent.BlfSubs = [];
-  userAgent.lastVoicemailCount = 0;
-
-  console.log('Creating User Agent... Done');
-  // Custom Web hook
-  if (typeof web_hook_on_userAgent_created !== 'undefined') web_hook_on_userAgent_created(userAgent);
 
   userAgent.transport.onConnect = function () {
-    onTransportConnected();
-  };
-  userAgent.transport.onDisconnect = function (error) {
-    if (error) {
-      onTransportConnectError(error);
-    } else {
-      onTransportDisconnected();
-    }
-  };
-
-  var RegistererOptions = {
-    logConfiguration: false, // If true, constructor logs the registerer configuration.
-    expires: RegisterExpires,
-    extraHeaders: [],
-    extraContactHeaderParams: [],
-    refreshFrequency: 75, // Determines when a re-REGISTER request is sent. The value should be specified as a percentage of the expiration time (between 50 and 99).
+    console.log('onConnect---------------');
+    $('#regStatus').html('Connected to Web Socket!');
+    var RegistererRegisterOptions = {
+      requestDelegate: {
+        onReject: function (sip) {
+          console.log('Registration Failed: ', sip.message);
+          $('#regStatus').html('Registration failed');
+        },
+      },
+    };
+    console.log('Sending Registration--------------');
+    $('#regStatus').html('Sending Registration...');
+    userAgent.registerer.register(RegistererRegisterOptions);
   };
 
-  // Added to the SIP Headers
-  if (RegisterExtraHeaders && RegisterExtraHeaders != '' && RegisterExtraHeaders != '{}') {
-    try {
-      var registerExtraHeaders = JSON.parse(RegisterExtraHeaders);
-      for (const [key, value] of Object.entries(registerExtraHeaders)) {
-        if (value != '') {
-          RegistererOptions.extraHeaders.push(key + ': ' + value);
-        }
-      }
-    } catch (e) {}
-  }
-
-  // Added to the contact AFTER the '>' (not permanent)
-  if (RegisterExtraContactParams && RegisterExtraContactParams != '' && RegisterExtraContactParams != '{}') {
-    try {
-      var registerExtraContactParams = JSON.parse(RegisterExtraContactParams);
-      for (const [key, value] of Object.entries(registerExtraContactParams)) {
-        if (value == '') {
-          RegistererOptions.extraContactHeaderParams.push(key);
-        } else {
-          RegistererOptions.extraContactHeaderParams.push(key + '=' + value);
-        }
-      }
-    } catch (e) {}
-  }
-
-  userAgent.registerer = new SIP.Registerer(userAgent, RegistererOptions);
-  console.log('Creating Registerer... Done');
+  userAgent.registerer = new SIP.Registerer(userAgent);
+  console.log('Creating Registerer--------------');
 
   userAgent.registerer.stateChange.addListener(function (newState) {
-    console.log('User Agent Registration State:', newState);
+    console.log('User Agent Registration State--------------:', newState);
     switch (newState) {
       case SIP.RegistererState.Initial:
         // Nothing to do
         break;
       case SIP.RegistererState.Registered:
-        onRegistered();
+        $('#regStatus').html('Registered');
         break;
       case SIP.RegistererState.Unregistered:
-        onUnregistered();
+        $('#regStatus').html('Unregistered, bye!');
         break;
       case SIP.RegistererState.Terminated:
         // Nothing to do
@@ -415,178 +265,14 @@ function register() {
     }
   });
 
-  console.log('User Agent Connecting to WebSocket...');
+  console.log('User Agent Connecting to WebSocket--------------');
   $('#regStatus').html('Connecting to Web Socket...');
   userAgent.start().catch(function (error) {
-    onTransportConnectError(error);
+    console.error(error);
   });
 }
 
-function onTransportConnected() {
-  console.log('Connected to Web Socket!');
-  $('#regStatus').html('Connected to Web Socket!');
-
-  $('#WebRtcFailed').hide();
-
-  // Reset the ReconnectionAttempts
-  userAgent.isReRegister = false;
-  userAgent.transport.attemptingReconnection = false;
-  userAgent.transport.ReconnectionAttempts = TransportReconnectionAttempts;
-
-  // Auto start register
-  if (userAgent.transport.attemptingReconnection == false && userAgent.registering == false) {
-    window.setTimeout(function () {
-      Register();
-    }, 500);
-  } else {
-    console.warn('onTransportConnected: Register() called, but attemptingReconnection is true or registering is true');
-  }
-}
-
-function Register() {
-  if (userAgent == null) return;
-  if (userAgent.registering == true) return;
-  if (userAgent.isRegistered()) return;
-
-  var RegistererRegisterOptions = {
-    requestDelegate: {
-      onReject: function (sip) {
-        onRegisterFailed(sip.message.reasonPhrase, sip.message.statusCode);
-      },
-    },
-  };
-
-  console.log('Sending Registration...');
-  $('#regStatus').html('Sending Registration...');
-  userAgent.registering = true;
-  userAgent.registerer.register(RegistererRegisterOptions);
-}
-
-function Unregister(skipUnsubscribe) {
-  if (userAgent == null || !userAgent.isRegistered()) return;
-
-  if (skipUnsubscribe == true) {
-    console.log('Skipping Unsubscribe');
-  } else {
-    console.log('Unsubscribing...');
-    $('#regStatus').html(lang.unsubscribing);
-    try {
-      UnsubscribeAll();
-    } catch (e) {}
-  }
-
-  console.log('Unregister...');
-  $('#regStatus').html(lang.disconnecting);
-  userAgent.registerer.unregister();
-
-  userAgent.transport.attemptingReconnection = false;
-  userAgent.registering = false;
-  userAgent.isReRegister = false;
-}
-
-function onUnregistered() {
-  if (userAgent.registrationCompleted) {
-    console.log('Unregistered, bye!');
-    $('#regStatus').html('Unregistered, bye!');
-
-    $('#reglink').show();
-    $('#dereglink').hide();
-
-    // Custom Web hook
-    if (typeof web_hook_on_unregistered !== 'undefined') web_hook_on_unregistered();
-  } else {
-    // Was never really registered, so cant really say unregistered
-  }
-
-  // We set this flag here so that the re-register attempts are fully completed.
-  userAgent.isReRegister = false;
-}
-
-function onRegistered() {
-  // This code fires on re-register after session timeout
-  // to ensure that events are not fired multiple times
-  // a isReRegister state is kept.
-
-  userAgent.registrationCompleted = true;
-  if (!userAgent.isReRegister) {
-    console.log('Registered!');
-
-    $('#reglink').hide();
-    $('#dereglink').show();
-    if (DoNotDisturbEnabled || DoNotDisturbPolicy == 'enabled') {
-      $('#dereglink').attr('class', 'dotDoNotDisturb');
-      $('#dndStatus').html('(DND)');
-    }
-
-    // Start Subscribe Loop
-    window.setTimeout(function () {
-      SubscribeAll();
-    }, 500);
-
-    // Output to status
-    $('#regStatus').html('Registered');
-
-    // Start XMPP
-    if (ChatEngine == 'XMPP') reconnectXmpp();
-
-    userAgent.registering = false;
-
-    // Close possible Alerts that may be open. (Can be from failed registers)
-    if (alertObj != null) {
-      alertObj.dialog('close');
-      alertObj = null;
-    }
-
-    // Custom Web hook
-    if (typeof web_hook_on_register !== 'undefined') web_hook_on_register(userAgent);
-  } else {
-    userAgent.registering = false;
-
-    console.log('ReRegistered!');
-  }
-  userAgent.isReRegister = true;
-}
-
-function onRegisterFailed(response, cause) {
-  console.log('Registration Failed: ' + response);
-  $('#regStatus').html(lang.registration_failed);
-
-  $('#reglink').show();
-  $('#dereglink').hide();
-
-  Alert(lang.registration_failed + ':' + response, lang.registration_failed);
-
-  userAgent.registering = false;
-
-  // Custom Web hook
-  if (typeof web_hook_on_registrationFailed !== 'undefined') web_hook_on_registrationFailed(response);
-}
-
-function SubscribeAll() {
-  if (!userAgent.isRegistered()) return;
-
-  // if (VoiceMailSubscribe) {
-  //   SubscribeVoicemail();
-  // }
-  // if (SubscribeToYourself) {
-  //   SelfSubscribe();
-  // }
-
-  // Start subscribe all
-  if (userAgent.BlfSubs && userAgent.BlfSubs.length > 0) {
-    UnsubscribeAll();
-  }
-  userAgent.BlfSubs = [];
-  if (Buddies.length >= 1) {
-    console.log('Starting Subscribe of all (' + Buddies.length + ') Extension Buddies...');
-    for (var b = 0; b < Buddies.length; b++) {
-      SubscribeBuddy(Buddies[b]);
-    }
-  }
-}
-
 function SubscribeBuddy(buddyObj) {
-  if (!userAgent.isRegistered()) return;
   console.log(buddyObj, '---------buddyObj');
 
   if ((buddyObj.type == 'extension' || buddyObj.type == 'xmpp') && buddyObj.EnableSubscribe == true && buddyObj.SubscribeUser != '') {
@@ -3240,7 +2926,6 @@ function onInviteProgress(lineObj, response) {
 function AudioCall(lineObj, dialledNumber, extraHeaders) {
   console.log(lineObj, dialledNumber, extraHeaders, '----------audio call');
   if (userAgent == null) return;
-  if (userAgent.isRegistered() == false) return;
   if (lineObj == null) return;
 
   if (HasAudioDevice == false) {
@@ -5247,7 +4932,7 @@ function RefreshStream(buddyObj, filter) {
         if (item.Billsec == '0') {
           formattedMessage += ' ' + lang.you_tried_to_make + ' ' + audioVideo + ' (' + item.ReasonText + ').';
         } else {
-          formattedMessage += ' ' + lang.you_made + ' ' + audioVideo + ', ' + lang.and_spoke_for + ' ' + formatDuration(item.Billsec) + '.';
+          formattedMessage += ' ' + lang.you_made + ' ' + audioVideo + ', ' + lang.and_spoke_for + ' ' + item.Billsec + '.';
         }
         var messageString = '<table class=ourChatMessage cellspacing=0 cellpadding=0><tr>';
         messageString += '<td style="padding-right:4px;">' + flag + '</td>';
@@ -5270,8 +4955,7 @@ function RefreshStream(buddyObj, filter) {
         if (item.Billsec == '0') {
           formattedMessage += ' ' + lang.you_missed_a_call + ' (' + item.ReasonText + ').';
         } else {
-          formattedMessage +=
-            ' ' + lang.you_received + ' ' + audioVideo + ', ' + lang.and_spoke_for + ' ' + formatDuration(item.Billsec) + '.';
+          formattedMessage += ' ' + lang.you_received + ' ' + audioVideo + ', ' + lang.and_spoke_for + ' ' + item.Billsec + '.';
         }
         var messageString = '<table class=theirChatMessage cellspacing=0 cellpadding=0><tr>';
         messageString += '<td class=theirChatMessageText onmouseenter="ShowChatMenu(this)" onmouseleave="HideChatMenu(this)">';
