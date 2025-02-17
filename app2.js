@@ -6,17 +6,10 @@ let sipUrl = 'pbx-2.testd.com';
 let SipUsername = 'User1';
 let SipPassword = '1234';
 
-const appversion = '2.7';
+const appversion = '2.8';
 
 let userAgent = null;
 let inviteSession = null;
-
-let HasVideoDevice = false;
-let HasAudioDevice = false;
-let HasSpeakerDevice = false;
-let AudioinputDevices = [];
-let VideoinputDevices = [];
-let SpeakerDevices = [];
 
 $(document).ready(function () {
   // add version
@@ -58,22 +51,9 @@ function register() {
     uri: SIP.UserAgent.makeURI(getUserAgentUri(SipUsername)),
     transportOptions: {
       server: `wss://${sipUrl}:4443/ws`,
-      traceSip: false,
-      connectionTimeout: 15,
-    },
-    sessionDescriptionHandlerFactoryOptions: {
-      peerConnectionConfiguration: {
-        bundlePolicy: 'balanced',
-      },
-      iceGatheringTimeout: 500,
     },
     authorizationUsername: SipUsername,
     authorizationPassword: SipPassword,
-    logConfiguration: false,
-    hackIpInContact: true,
-    autoStart: false,
-    autoStop: true,
-    register: false,
     noAnswerTimeout: 120,
     delegate: {
       onInvite: function (sip) {
@@ -86,20 +66,6 @@ function register() {
   // check fo state change
   registerer.stateChange.addListener((newState) => {
     console.log('User Agent Registration State:', newState);
-    switch (newState) {
-      case SIP.RegistererState.Initial:
-        // Nothing to do
-        break;
-      case SIP.RegistererState.Registered:
-        $('#regStatus').html('Registered');
-        break;
-      case SIP.RegistererState.Unregistered:
-        $('#regStatus').html('Unregistered, bye!');
-        break;
-      case SIP.RegistererState.Terminated:
-        // Nothing to do
-        break;
-    }
   });
 
   // Start the user agent
@@ -164,46 +130,25 @@ function DialByLine() {
     console.log(newState, '---------newState');
   });
   inviteSession.delegate = {
+    onMessage: function (sip) {},
+    onInvite: function (sip) {},
     onBye: function (sip) {
-      console.log(sip, '----------------sip in onBye');
       sip.accept();
       teardownSession();
     },
-    onMessage: function (sip) {
-      console.log(sip, '----------------sip in onMessage');
-      // onSessionReceivedMessage(sip);
-    },
-    onInvite: function (sip) {
-      console.log(sip, '----------------sip in onInvite');
-      // onSessionReinvited(sip);
-    },
-    onSessionDescriptionHandler: function (sdh, provisional) {
-      console.log(sdh, provisional, ' -----------------sdh, provisional in onSessionDescriptionHandler');
-      onSessionDescriptionHandlerCreated(sdh, provisional);
+    onSessionDescriptionHandler: function (sessionDescriptionHandler) {
+      onSessionDescriptionHandlerCreated(sessionDescriptionHandler);
     },
   };
   // inviter options
   var inviterOptions = {
     requestDelegate: {
-      // OutgoingRequestDelegate
-      onTrying: function (sip) {
-        console.log(sip, '----------------sip in onTrying');
-        // onInviteTrying(sip);
-      },
-      onProgress: function (sip) {
-        console.log(sip, '----------------sip in onProgress');
-        // onInviteProgress(sip);
-      },
-      onRedirect: function (sip) {
-        console.log(sip, '----------------sip in onRedirect');
-        // onInviteRedirected(sip);
-      },
+      onTrying: function (sip) {},
+      onProgress: function (sip) {},
+      onRedirect: function (sip) {},
+      onReject: function (sip) {},
       onAccept: function (sip) {
         onInviteAccepted(sip);
-      },
-      onReject: function (sip) {
-        console.log(sip, '----------------sip in onReject');
-        // onInviteRejected(sip);
       },
     },
   };
@@ -213,53 +158,40 @@ function DialByLine() {
   });
 }
 
-function onSessionDescriptionHandlerCreated(sdh) {
-  if (sdh) {
-    if (sdh.peerConnection) {
-      sdh.peerConnection.ontrack = function (event) {
-        onTrackAddedEvent();
-      };
-    } else {
-      console.warn('onSessionDescriptionHandler fired without a peerConnection');
-    }
-  } else {
-    console.warn('onSessionDescriptionHandler fired without a sessionDescriptionHandler');
-  }
-}
-
-function onTrackAddedEvent() {
-  var peerConnection = inviteSession.sessionDescriptionHandler.peerConnection;
-
-  var remoteAudioStream = new MediaStream();
-
-  peerConnection.getTransceivers().forEach(function (transceiver) {
-    // Add Media
-    var receiver = transceiver.receiver;
-    if (receiver.track) {
-      if (receiver.track.kind == 'audio') {
-        console.log('Adding Remote Audio Track');
-        remoteAudioStream.addTrack(receiver.track);
+function onSessionDescriptionHandlerCreated(sessionDescriptionHandler) {
+  if (sessionDescriptionHandler && sessionDescriptionHandler.peerConnection) {
+    sdh.peerConnection.ontrack = function (event) {
+      var peerConnection = inviteSession.sessionDescriptionHandler.peerConnection;
+      var remoteAudioStream = new MediaStream();
+      peerConnection.getTransceivers().forEach(function (transceiver) {
+        // Add Media
+        var receiver = transceiver.receiver;
+        if (receiver.track?.kind == 'audio') {
+          console.log('Adding Remote Audio Track');
+          remoteAudioStream.addTrack(receiver.track);
+        }
+      });
+      // Attach Audio
+      if (remoteAudioStream.getAudioTracks().length >= 1) {
+        var remoteAudio = $('#line-remoteAudio').get(0);
+        remoteAudio.srcObject = remoteAudioStream;
+        remoteAudio.onloadedmetadata = function (e) {
+          if (typeof remoteAudio.sinkId !== 'undefined') {
+            remoteAudio
+              .setSinkId('default')
+              .then(function () {
+                console.log('sinkId applied: default');
+              })
+              .catch(function (e) {
+                console.warn('Error using setSinkId: ', e);
+              });
+          }
+          remoteAudio.play();
+        };
       }
-    }
-  });
-
-  // Attach Audio
-  if (remoteAudioStream.getAudioTracks().length >= 1) {
-    var remoteAudio = $('#line-remoteAudio').get(0);
-    remoteAudio.srcObject = remoteAudioStream;
-    remoteAudio.onloadedmetadata = function (e) {
-      if (typeof remoteAudio.sinkId !== 'undefined') {
-        remoteAudio
-          .setSinkId('default')
-          .then(function () {
-            console.log('sinkId applied: default');
-          })
-          .catch(function (e) {
-            console.warn('Error using setSinkId: ', e);
-          });
-      }
-      remoteAudio.play();
     };
+  } else {
+    // error
   }
 }
 
@@ -272,28 +204,19 @@ function ReceiveCall(session) {
   AddLineHtml();
   // Session Delegates
   inviteSession.delegate = {
+    onMessage: function (sip) {},
+    onInvite: function (sip) {},
     onBye: function (sip) {
-      console.log(sip, '----------------sip in onBye');
       sip.accept();
       teardownSession();
     },
-    onMessage: function (sip) {
-      console.log(sip, '----------------sip in onMessage');
-      // onSessionReceivedMessage(sip);
-    },
-    onInvite: function (sip) {
-      console.log(sip, '----------------sip in onInvite');
-      // onSessionReinvited(sip);
-    },
-    onSessionDescriptionHandler: function (sdh, provisional) {
-      console.log(sdh, provisional, ' -----------------sdh, provisional in onSessionDescriptionHandler');
-      onSessionDescriptionHandlerCreated(sdh, provisional);
+    onSessionDescriptionHandler: function (sessionDescriptionHandler) {
+      onSessionDescriptionHandlerCreated(sessionDescriptionHandler);
     },
   };
   // incomingInviteRequestDelegate
   inviteSession.incomingInviteRequest.delegate = {
     onCancel: function (sip) {
-      console.log(sip, '----------------sip in onCancel');
       endSession();
     },
   };
