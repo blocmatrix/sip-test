@@ -6,10 +6,21 @@ let sipUrl = 'pbx-2.testd.com';
 let SipUsername = 'User1';
 let SipPassword = '1234';
 
+const appversion = '2.2';
+
 let userAgent = null;
 let inviteSession = null;
 
+let HasVideoDevice = false;
+let HasAudioDevice = false;
+let HasSpeakerDevice = false;
+let AudioinputDevices = [];
+let VideoinputDevices = [];
+let SpeakerDevices = [];
+
 $(document).ready(function () {
+  // add version
+  $('#version').html(appversion);
   var username = localStorage.getItem(LS_USERNAME);
   if (username) {
     SipUsername = username;
@@ -21,7 +32,35 @@ $(document).ready(function () {
     dialText = lsDialText;
     $('#dialText').val(lsDialText);
   }
+
+  DetectDevices();
 });
+
+function DetectDevices() {
+  navigator.mediaDevices
+    .enumerateDevices()
+    .then(function (deviceInfos) {
+      console.log(deviceInfos, '---------deviceInfos');
+      HasAudioDevice = false;
+      HasSpeakerDevice = false; // Safari and Firefox don't have these
+      AudioinputDevices = [];
+      SpeakerDevices = [];
+      for (var i = 0; i < deviceInfos.length; ++i) {
+        if (deviceInfos[i].kind === 'audioinput') {
+          HasAudioDevice = true;
+          AudioinputDevices.push(deviceInfos[i]);
+        } else if (deviceInfos[i].kind === 'audiooutput') {
+          HasSpeakerDevice = true;
+          SpeakerDevices.push(deviceInfos[i]);
+        }
+      }
+      var supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
+      console.log(supportedConstraints, '-------supportedConstraints');
+    })
+    .catch(function (e) {
+      console.error('Error enumerating devices', e);
+    });
+}
 
 function makeRegister() {
   if ($('#username').val()) {
@@ -153,44 +192,101 @@ function RejectCall() {
         console.warn('Problem in RejectCall(), could not reject() call', e, inviteSession);
       });
   }
-  $('#Phone').empty();
   teardownSession();
 }
 
-function teardownSession() {
-  console.log('teardownSession');
-}
-
 function DialByLine() {
+  // devices
+  var supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
+  var spdOptions = {
+    earlyMedia: true,
+    sessionDescriptionHandlerOptions: {
+      constraints: {
+        audio: { deviceId: 'default' },
+        video: false,
+      },
+    },
+  };
+  // Add additional Constraints
+  if (supportedConstraints.autoGainControl) spdOptions.sessionDescriptionHandlerOptions.constraints.audio.autoGainControl = true;
+  if (supportedConstraints.echoCancellation) spdOptions.sessionDescriptionHandlerOptions.constraints.audio.echoCancellation = true;
+  if (supportedConstraints.noiseSuppression) spdOptions.sessionDescriptionHandlerOptions.constraints.audio.noiseSuppression = true;
+  // make Target
   const target = SIP.UserAgent.makeURI(getUserAgentUri(dialText));
   // create inviter
-  inviteSession = new SIP.Inviter(userAgent, target, {
-    sessionDescriptionHandlerOptions: {
-      constraints: { audio: true, video: false },
-    },
-  });
+  inviteSession = new SIP.Inviter(userAgent, target);
   inviteSession.stateChange.addListener((newState) => {
     console.log(newState, '---------newState');
   });
+  inviteSession.delegate = {
+    onBye: function (sip) {
+      console.log(sip, '----------------sip in onBye');
+      // onSessionReceivedBye(lineObj, sip);
+    },
+    onMessage: function (sip) {
+      console.log(sip, '----------------sip in onMessage');
+      // onSessionReceivedMessage(lineObj, sip);
+    },
+    onInvite: function (sip) {
+      console.log(sip, '----------------sip in onInvite');
+      // onSessionReinvited(lineObj, sip);
+    },
+    onSessionDescriptionHandler: function (sdh, provisional) {
+      console.log(sdh, provisional, ' -----------------sdh, provisional in onSessionDescriptionHandler');
+      // onSessionDescriptionHandlerCreated(lineObj, sdh, provisional, false);
+    },
+  };
+  // inviter options
+  var inviterOptions = {
+    requestDelegate: {
+      // OutgoingRequestDelegate
+      onTrying: function (sip) {
+        console.log(sip, '----------------sip in onTrying');
+        // onInviteTrying(lineObj, sip);
+      },
+      onProgress: function (sip) {
+        console.log(sip, '----------------sip in onProgress');
+        // onInviteProgress(lineObj, sip);
+      },
+      onRedirect: function (sip) {
+        console.log(sip, '----------------sip in onRedirect');
+        // onInviteRedirected(lineObj, sip);
+      },
+      onAccept: function (sip) {
+        onInviteAccepted(sip);
+      },
+      onReject: function (sip) {
+        console.log(sip, '----------------sip in onReject');
+        // onInviteRejected(lineObj, sip);
+      },
+    },
+  };
   // invite
-  inviteSession
-    .invite({
-      sessionDescriptionHandlerOptions: {
-        constraints: { audio: true, video: false },
-      },
-      requestDelegate: {
-        // onTrying: (sip) => {},
-        // onProgress: (sip) => {},
-        // onRedirect: (sip) => {},
-        // onReject: (sip) => {},
-        onAccept: (sip) => {
-          onInviteAccepted(sip);
-        },
-      },
-    })
-    .catch((e) => {
-      console.warn('Failed to send INVITE:', e);
-    });
+  inviteSession.invite(inviterOptions).catch((e) => {
+    console.warn('Failed to send INVITE:', e);
+  });
+}
+
+function onSessionDescriptionHandlerCreated(lineObj, sdh, provisional, includeVideo) {
+  if (sdh) {
+    if (sdh.peerConnection) {
+      // console.log(sdh);
+      sdh.peerConnection.ontrack = function (event) {
+        // console.log(event);
+        onTrackAddedEvent(lineObj, includeVideo);
+      };
+      // sdh.peerConnectionDelegate = {
+      //     ontrack: function(event){
+      //         console.log(event);
+      //         onTrackAddedEvent(lineObj, includeVideo);
+      //     }
+      // }
+    } else {
+      console.warn('onSessionDescriptionHandler fired without a peerConnection');
+    }
+  } else {
+    console.warn('onSessionDescriptionHandler fired without a sessionDescriptionHandler');
+  }
 }
 
 function ReceiveCall(session) {
@@ -200,4 +296,9 @@ function ReceiveCall(session) {
 
 function onInviteAccepted(session) {
   console.log('---------onInviteAccepted');
+}
+
+function teardownSession() {
+  console.log('teardownSession');
+  $('#Phone').append(html);
 }

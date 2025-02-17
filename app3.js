@@ -175,7 +175,7 @@ function InitUi() {
   var rightSection = $('<div/>');
   rightSection.attr('id', 'rightContent');
   rightSection.attr('class', 'rightContent');
-  rightSection.attr('style', 'margin-left: 320px; height: 100%');
+  // rightSection.attr('style', 'margin-left: 320px; height: 100%');
 
   phone.append(rightSection);
 }
@@ -2257,64 +2257,18 @@ function UserLocale() {
   }
 }
 // ============================================================ Dial ================================================================================
-function DialByLine(type, buddy, numToDial, CallerID, extraHeaders) {
-  console.log(type, buddy, numToDial, CallerID, extraHeaders, '------------------DialByLine');
-
-  var numDial = numToDial ? numToDial : $('#dialText').val();
-  if (EnableAlphanumericDial) {
-    numDial = numDial.replace(telAlphanumericRegEx, '').substring(0, MaxDidLength);
-  } else {
-    numDial = numDial.replace(telNumericRegEx, '').substring(0, MaxDidLength);
-  }
-  if (numDial.length == 0) {
-    console.warn('Enter number to dial');
-    return;
-  }
-
-  // ShowContacts();
-
-  // Create a Buddy if one is not already existing
-  var buddyObj = buddy ? FindBuddyByIdentity(buddy) : FindBuddyByDid(numDial);
-  if (buddyObj == null) {
-    var buddyType = numDial.length > DidLength ? 'contact' : 'extension';
-    // Assumption but anyway: If the number starts with a * or # then its probably not a subscribable did,
-    // and is probably a feature code.
-    if (numDial.substring(0, 1) == '*' || numDial.substring(0, 1) == '#') buddyType = 'contact';
-    buddyObj = MakeBuddy(
-      buddyType,
-      true,
-      false,
-      false,
-      CallerID ? CallerID : numDial,
-      numDial,
-      null,
-      false,
-      null,
-      AutoDeleteDefault,
-      false
-    );
-  }
-
+function DialByLine() {
+  var numDial = $('#dialText').val();
   // Create a Line
   newLineNumber = newLineNumber + 1;
-  var lineObj = new Line(newLineNumber, buddyObj.CallerIDName, numDial, buddyObj);
+  var lineObj = new Line(newLineNumber, numDial, numDial);
   Lines.push(lineObj);
+
   AddLineHtml(lineObj, 'outbound');
+
   SelectLine(newLineNumber);
-  UpdateBuddyList();
 
-  // Start Call Invite
-  if (type == 'audio') {
-    AudioCall(lineObj, numDial, extraHeaders);
-  } else {
-    VideoCall(lineObj, numDial, extraHeaders);
-  }
-
-  try {
-    $('#line-' + newLineNumber)
-      .get(0)
-      .scrollIntoViewIfNeeded();
-  } catch (e) {}
+  AudioCall(lineObj, numDial);
 }
 
 function DetectDevices() {
@@ -2446,8 +2400,7 @@ function onInviteProgress(lineObj, response) {
   // Custom Web hook
   if (typeof web_hook_on_modify !== 'undefined') web_hook_on_modify('progress', lineObj.SipSession);
 }
-function AudioCall(lineObj, dialledNumber, extraHeaders) {
-  console.log(lineObj, dialledNumber, extraHeaders, '----------audio call');
+function AudioCall(lineObj, dialledNumber) {
   if (userAgent == null) return;
   if (lineObj == null) return;
 
@@ -2467,23 +2420,6 @@ function AudioCall(lineObj, dialledNumber, extraHeaders) {
       },
     },
   };
-  // Configure Audio
-  var currentAudioDevice = getAudioSrcID();
-  if (currentAudioDevice != 'default') {
-    var confirmedAudioDevice = false;
-    for (var i = 0; i < AudioinputDevices.length; ++i) {
-      if (currentAudioDevice == AudioinputDevices[i].deviceId) {
-        confirmedAudioDevice = true;
-        break;
-      }
-    }
-    if (confirmedAudioDevice) {
-      spdOptions.sessionDescriptionHandlerOptions.constraints.audio.deviceId = { exact: currentAudioDevice };
-    } else {
-      console.warn('The audio device you used before is no longer available, default settings applied.');
-      localStorage.setItem('AudioSrcId', 'default');
-    }
-  }
   // Add additional Constraints
   if (supportedConstraints.autoGainControl) {
     spdOptions.sessionDescriptionHandlerOptions.constraints.audio.autoGainControl = AutoGainControl;
@@ -2494,27 +2430,6 @@ function AudioCall(lineObj, dialledNumber, extraHeaders) {
   if (supportedConstraints.noiseSuppression) {
     spdOptions.sessionDescriptionHandlerOptions.constraints.audio.noiseSuppression = NoiseSuppression;
   }
-  // Added to the SIP Headers
-  if (extraHeaders) {
-    spdOptions.extraHeaders = extraHeaders;
-  } else {
-    spdOptions.extraHeaders = [];
-  }
-  if (InviteExtraHeaders && InviteExtraHeaders != '' && InviteExtraHeaders != '{}') {
-    try {
-      var inviteExtraHeaders = JSON.parse(InviteExtraHeaders);
-      for (const [key, value] of Object.entries(inviteExtraHeaders)) {
-        if (value == '') {
-          // This is a header, must be format: "Field: Value"
-        } else {
-          spdOptions.extraHeaders.push(key + ': ' + value);
-        }
-      }
-    } catch (e) {}
-  }
-
-  $('#line-' + lineObj.LineNumber + '-msg').html(lang.starting_audio_call);
-  $('#line-' + lineObj.LineNumber + '-timer').show();
 
   var startTime = moment.utc();
 
@@ -2537,8 +2452,8 @@ function AudioCall(lineObj, dialledNumber, extraHeaders) {
     $('#line-' + lineObj.LineNumber + '-datetime').html(timeStr);
   }, 1000);
   lineObj.SipSession.data.VideoSourceDevice = null;
-  lineObj.SipSession.data.AudioSourceDevice = getAudioSrcID();
-  lineObj.SipSession.data.AudioOutputDevice = getAudioOutputID();
+  lineObj.SipSession.data.AudioSourceDevice = 'default';
+  lineObj.SipSession.data.AudioOutputDevice = 'default';
   lineObj.SipSession.data.terminateby = 'them';
   lineObj.SipSession.data.withvideo = false;
   lineObj.SipSession.data.earlyReject = false;
@@ -2581,22 +2496,8 @@ function AudioCall(lineObj, dialledNumber, extraHeaders) {
   lineObj.SipSession.invite(inviterOptions).catch(function (e) {
     console.warn('Failed to send INVITE:', e);
   });
-
-  $('#line-' + lineObj.LineNumber + '-btn-settings').removeAttr('disabled');
-  $('#line-' + lineObj.LineNumber + '-btn-audioCall').prop('disabled', 'disabled');
-  $('#line-' + lineObj.LineNumber + '-btn-videoCall').prop('disabled', 'disabled');
-  $('#line-' + lineObj.LineNumber + '-btn-search').removeAttr('disabled');
-
-  $('#line-' + lineObj.LineNumber + '-progress').show();
-  $('#line-' + lineObj.LineNumber + '-msg').show();
-
-  UpdateUI();
-  UpdateBuddyList();
-  updateLineScroll(lineObj.LineNumber);
-
-  // Custom Web hook
-  if (typeof web_hook_on_invite !== 'undefined') web_hook_on_invite(lineObj.SipSession);
 }
+
 function onTrackAddedEvent(lineObj, includeVideo) {
   // Gets remote tracks
   var session = lineObj.SipSession;
@@ -3289,6 +3190,7 @@ function onSessionReceivedBye(lineObj, response) {
   teardownSession(lineObj);
 }
 function teardownSession(lineObj) {
+  $('#rightContent').empty();
   if (lineObj == null || lineObj.SipSession == null) return;
 
   var session = lineObj.SipSession;
@@ -3635,8 +3537,6 @@ function CloseLine(lineNum) {
 // Inbound Calls
 // =============
 function ReceiveCall(session) {
-  console.log(session.remoteIdentity, '----------session.remoteIdentity');
-  console.log(session, '----------session');
   // First Determine Identity from From
   var callerID = session.remoteIdentity.displayName;
   var did = session.remoteIdentity.uri.user;
@@ -3666,20 +3566,6 @@ function ReceiveCall(session) {
   }, 1000);
   lineObj.SipSession.data.earlyReject = false;
   Lines.push(lineObj);
-  // Detect Video
-  lineObj.SipSession.data.withvideo = false;
-  if (EnableVideoCalling == true && lineObj.SipSession.request.body) {
-    // Asterisk 13 PJ_SIP always sends m=video if endpoint has video codec,
-    // even if original invite does not specify video.
-    if (lineObj.SipSession.request.body.indexOf('m=video') > -1) {
-      lineObj.SipSession.data.withvideo = true;
-      // The invite may have video, but the buddy may be a contact
-      if (buddyObj.type == 'contact') {
-        // videoInvite = false;
-        // TODO: Is this limitation necessary?
-      }
-    }
-  }
 
   // Session Delegates
   lineObj.SipSession.delegate = {
@@ -3703,83 +3589,8 @@ function ReceiveCall(session) {
     },
   };
 
-  // Possible Early Rejection options
-  if (DoNotDisturbEnabled == true || DoNotDisturbPolicy == 'enabled') {
-    if (DoNotDisturbEnabled == true && buddyObj.EnableDuringDnd == true) {
-      // This buddy has been allowed
-      console.log('Buddy is allowed to call while you are on DND');
-    } else {
-      console.log('Do Not Disturb Enabled, rejecting call.');
-      lineObj.SipSession.data.earlyReject = true;
-      RejectCall(lineObj.LineNumber, true);
-      return;
-    }
-  }
-
   // Create the call HTML
   AddLineHtml(lineObj, 'inbound');
-
-  $('#line-' + lineObj.LineNumber + '-msg').html(lang.incoming_call);
-  $('#line-' + lineObj.LineNumber + '-msg').show();
-  $('#line-' + lineObj.LineNumber + '-timer').show();
-  if (lineObj.SipSession.data.withvideo) {
-    $('#line-' + lineObj.LineNumber + '-answer-video').show();
-  } else {
-    $('#line-' + lineObj.LineNumber + '-answer-video').hide();
-  }
-  $('#line-' + lineObj.LineNumber + '-AnswerCall').show();
-
-  // Update the buddy list now so that any early rejected calls don't flash on
-  UpdateBuddyList();
-
-  // Auto Answer options
-  var autoAnswerRequested = false;
-  var answerTimeout = 1000;
-  if (!AutoAnswerEnabled && IntercomPolicy == 'enabled') {
-    // Check headers only if policy is allow
-
-    // https://github.com/InnovateAsterisk/Browser-Phone/issues/126
-    // Alert-Info: info=alert-autoanswer
-    // Alert-Info: answer-after=0
-    // Call-info: answer-after=0; x=y
-    // Call-Info: Answer-After=0
-    // Alert-Info: ;info=alert-autoanswer
-    // Alert-Info: <sip:>;info=alert-autoanswer
-    // Alert-Info: <sip:domain>;info=alert-autoanswer
-
-    var ci = session.request.headers['Call-Info'];
-    if (ci !== undefined && ci.length > 0) {
-      for (var i = 0; i < ci.length; i++) {
-        var raw_ci = ci[i].raw.toLowerCase();
-        if (raw_ci.indexOf('answer-after=') > 0) {
-          var temp_seconds_autoanswer = parseInt(raw_ci.substring(raw_ci.indexOf('answer-after=') + 'answer-after='.length).split(';')[0]);
-          if (Number.isInteger(temp_seconds_autoanswer) && temp_seconds_autoanswer >= 0) {
-            autoAnswerRequested = true;
-            if (temp_seconds_autoanswer > 1) answerTimeout = temp_seconds_autoanswer * 1000;
-            break;
-          }
-        }
-      }
-    }
-    var ai = session.request.headers['Alert-Info'];
-    if (autoAnswerRequested === false && ai !== undefined && ai.length > 0) {
-      for (var i = 0; i < ai.length; i++) {
-        var raw_ai = ai[i].raw.toLowerCase();
-        if (raw_ai.indexOf('auto answer') > 0 || raw_ai.indexOf('alert-autoanswer') > 0) {
-          var autoAnswerRequested = true;
-          break;
-        }
-        if (raw_ai.indexOf('answer-after=') > 0) {
-          var temp_seconds_autoanswer = parseInt(raw_ai.substring(raw_ai.indexOf('answer-after=') + 'answer-after='.length).split(';')[0]);
-          if (Number.isInteger(temp_seconds_autoanswer) && temp_seconds_autoanswer >= 0) {
-            autoAnswerRequested = true;
-            if (temp_seconds_autoanswer > 1) answerTimeout = temp_seconds_autoanswer * 1000;
-            break;
-          }
-        }
-      }
-    }
-  }
 
   // Play Ring Tone if not on the phone
   if (EnableRingtone == true) {
@@ -3811,10 +3622,8 @@ function ReceiveCall(session) {
     };
     lineObj.SipSession.data.ringerObj = ringer;
   }
-
-  // Custom Web hook
-  if (typeof web_hook_on_invite !== 'undefined') web_hook_on_invite(session);
 }
+
 function SelectBuddy(buddy) {
   var buddyObj = FindBuddyByIdentity(buddy);
   if (buddyObj == null) return;
@@ -3951,7 +3760,6 @@ function RefreshStream(buddyObj, filter) {
 
   // Filter
   if (filter && filter != '') {
-    // TODO: Maybe some room for improvement here
     console.log('Rows without filter (' + filter + '): ', json.DataCollection.length);
     json.DataCollection = json.DataCollection.filter(function (item) {
       if (filter.indexOf('date: ') != -1) {
@@ -4294,8 +4102,6 @@ function RefreshStream(buddyObj, filter) {
   }, 300);
 }
 function AnswerAudioCall(lineNumber) {
-  // CloseWindow();
-
   var lineObj = FindLineByNumber(lineNumber);
   if (lineObj == null) {
     console.warn('Failed to get line (' + lineNumber + ')');
