@@ -1983,6 +1983,21 @@ function onRegistered() {
   userAgent.isReRegister = true;
 }
 
+function onRegisterFailed(response, cause) {
+  console.log('Registration Failed: ' + response);
+  $('#regStatus').html(lang.registration_failed);
+
+  $('#reglink').show();
+  $('#dereglink').hide();
+
+  Alert(lang.registration_failed + ':' + response, lang.registration_failed);
+
+  userAgent.registering = false;
+
+  // Custom Web hook
+  if (typeof web_hook_on_registrationFailed !== 'undefined') web_hook_on_registrationFailed(response);
+}
+
 function SubscribeAll() {
   if (!userAgent.isRegistered()) return;
 
