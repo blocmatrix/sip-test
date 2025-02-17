@@ -54,6 +54,7 @@ function register() {
     },
     authorizationUsername: SipUsername,
     authorizationPassword: SipPassword,
+    logConfiguration: false,
     noAnswerTimeout: 120,
     delegate: {
       onInvite: function (sip) {
@@ -160,7 +161,7 @@ function DialByLine() {
 
 function onSessionDescriptionHandlerCreated(sessionDescriptionHandler) {
   if (sessionDescriptionHandler && sessionDescriptionHandler.peerConnection) {
-    sdh.peerConnection.ontrack = function (event) {
+    sessionDescriptionHandler.peerConnection.ontrack = function (event) {
       var peerConnection = inviteSession.sessionDescriptionHandler.peerConnection;
       var remoteAudioStream = new MediaStream();
       peerConnection.getTransceivers().forEach(function (transceiver) {
