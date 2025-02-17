@@ -6,7 +6,7 @@ let sipUrl = 'pbx-2.testd.com';
 let SipUsername = 'User1';
 let SipPassword = '1234';
 
-const appversion = '2.2';
+const appversion = '2.3';
 
 let userAgent = null;
 let inviteSession = null;
@@ -170,6 +170,12 @@ function AddLineHtml() {
   html +=
     '<button onclick="RejectCall()" class=rejectButton><i class="fa fa-phone" style="transform: rotate(135deg);"></i> Reject Call </button>';
 
+  html += '<div class=CallControlContainer>';
+  // End Call
+  html +=
+    '<button onclick="endSession()" class="roundButtons dialButtons inCallButtons hangupButton" title="End Call"><i class="fa fa-phone" style="transform: rotate(135deg);"></i></button>';
+  html += '</div>';
+
   $('#Phone').append(html);
 }
 
@@ -196,6 +202,7 @@ function RejectCall() {
 }
 
 function DialByLine() {
+  AddLineHtml();
   // devices
   var supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
   var spdOptions = {
@@ -233,7 +240,7 @@ function DialByLine() {
     },
     onSessionDescriptionHandler: function (sdh, provisional) {
       console.log(sdh, provisional, ' -----------------sdh, provisional in onSessionDescriptionHandler');
-      // onSessionDescriptionHandlerCreated(lineObj, sdh, provisional, false);
+      onSessionDescriptionHandlerCreated(sdh, provisional);
     },
   };
   // inviter options
@@ -267,25 +274,53 @@ function DialByLine() {
   });
 }
 
-function onSessionDescriptionHandlerCreated(lineObj, sdh, provisional, includeVideo) {
+function onSessionDescriptionHandlerCreated(sdh) {
   if (sdh) {
     if (sdh.peerConnection) {
-      // console.log(sdh);
       sdh.peerConnection.ontrack = function (event) {
-        // console.log(event);
-        onTrackAddedEvent(lineObj, includeVideo);
+        onTrackAddedEvent();
       };
-      // sdh.peerConnectionDelegate = {
-      //     ontrack: function(event){
-      //         console.log(event);
-      //         onTrackAddedEvent(lineObj, includeVideo);
-      //     }
-      // }
     } else {
       console.warn('onSessionDescriptionHandler fired without a peerConnection');
     }
   } else {
     console.warn('onSessionDescriptionHandler fired without a sessionDescriptionHandler');
+  }
+}
+
+function onTrackAddedEvent() {
+  var peerConnection = inviteSession.sessionDescriptionHandler.peerConnection;
+
+  var remoteAudioStream = new MediaStream();
+
+  peerConnection.getTransceivers().forEach(function (transceiver) {
+    // Add Media
+    var receiver = transceiver.receiver;
+    if (receiver.track) {
+      if (receiver.track.kind == 'audio') {
+        console.log('Adding Remote Audio Track');
+        remoteAudioStream.addTrack(receiver.track);
+      }
+    }
+  });
+
+  // Attach Audio
+  if (remoteAudioStream.getAudioTracks().length >= 1) {
+    var remoteAudio = $('#line-remoteAudio').get(0);
+    remoteAudio.srcObject = remoteAudioStream;
+    remoteAudio.onloadedmetadata = function (e) {
+      if (typeof remoteAudio.sinkId !== 'undefined') {
+        remoteAudio
+          .setSinkId('default')
+          .then(function () {
+            console.log('sinkId applied: default');
+          })
+          .catch(function (e) {
+            console.warn('Error using setSinkId: ', e);
+          });
+      }
+      remoteAudio.play();
+    };
   }
 }
 
@@ -298,7 +333,14 @@ function onInviteAccepted(session) {
   console.log('---------onInviteAccepted');
 }
 
+function endSession() {
+  inviteSession.bye().catch(function (e) {
+    console.warn('Failed to bye the session!', e);
+  });
+  teardownSession();
+}
+
 function teardownSession() {
   console.log('teardownSession');
-  $('#Phone').append(html);
+  $('#Phone').empty();
 }

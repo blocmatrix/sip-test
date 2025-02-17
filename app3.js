@@ -2370,15 +2370,19 @@ function AudioCall(lineObj, dialledNumber) {
   lineObj.SipSession.isOnHold = false;
   lineObj.SipSession.delegate = {
     onBye: function (sip) {
-      onSessionReceivedBye(lineObj, sip);
+      console.log(sip, '----------------sip in onBye');
+      // onSessionReceivedBye(lineObj, sip);
     },
     onMessage: function (sip) {
-      onSessionReceivedMessage(lineObj, sip);
+      console.log(sip, '----------------sip in onMessage');
+      // onSessionReceivedMessage(lineObj, sip);
     },
     onInvite: function (sip) {
-      onSessionReinvited(lineObj, sip);
+      console.log(sip, '----------------sip in onInvite');
+      // onSessionReinvited(lineObj, sip);
     },
     onSessionDescriptionHandler: function (sdh, provisional) {
+      console.log(sdh, provisional, ' -----------------sdh, provisional in onSessionDescriptionHandler');
       onSessionDescriptionHandlerCreated(lineObj, sdh, provisional, false);
     },
   };
@@ -2411,17 +2415,9 @@ function AudioCall(lineObj, dialledNumber) {
 function onSessionDescriptionHandlerCreated(lineObj, sdh, provisional, includeVideo) {
   if (sdh) {
     if (sdh.peerConnection) {
-      // console.log(sdh);
       sdh.peerConnection.ontrack = function (event) {
-        // console.log(event);
         onTrackAddedEvent(lineObj, includeVideo);
       };
-      // sdh.peerConnectionDelegate = {
-      //     ontrack: function(event){
-      //         console.log(event);
-      //         onTrackAddedEvent(lineObj, includeVideo);
-      //     }
-      // }
     } else {
       console.warn('onSessionDescriptionHandler fired without a peerConnection');
     }
@@ -2506,7 +2502,6 @@ function onTrackAddedEvent(lineObj, includeVideo) {
   var pc = session.sessionDescriptionHandler.peerConnection;
 
   var remoteAudioStream = new MediaStream();
-  var remoteVideoStream = new MediaStream();
 
   pc.getTransceivers().forEach(function (transceiver) {
     // Add Media
@@ -2515,13 +2510,6 @@ function onTrackAddedEvent(lineObj, includeVideo) {
       if (receiver.track.kind == 'audio') {
         console.log('Adding Remote Audio Track');
         remoteAudioStream.addTrack(receiver.track);
-      }
-      if (includeVideo && receiver.track.kind == 'video') {
-        if (transceiver.mid) {
-          receiver.track.mid = transceiver.mid;
-          console.log('Adding Remote Video Track - ', receiver.track.readyState, 'MID:', receiver.track.mid);
-          remoteVideoStream.addTrack(receiver.track);
-        }
       }
     }
   });
@@ -2544,72 +2532,6 @@ function onTrackAddedEvent(lineObj, includeVideo) {
       remoteAudio.play();
     };
   }
-
-  if (includeVideo) {
-    // Single Or Multiple View
-    $('#line-' + lineObj.LineNumber + '-remote-videos').empty();
-    if (remoteVideoStream.getVideoTracks().length >= 1) {
-      var remoteVideoStreamTracks = remoteVideoStream.getVideoTracks();
-      remoteVideoStreamTracks.forEach(function (remoteVideoStreamTrack) {
-        var thisRemoteVideoStream = new MediaStream();
-        thisRemoteVideoStream.trackID = remoteVideoStreamTrack.id;
-        thisRemoteVideoStream.mid = remoteVideoStreamTrack.mid;
-        remoteVideoStreamTrack.onended = function () {
-          console.log('Video Track Ended: ', this.mid);
-          RedrawStage(lineObj.LineNumber, true);
-        };
-        thisRemoteVideoStream.addTrack(remoteVideoStreamTrack);
-
-        var wrapper = $('<span />', {
-          class: 'VideoWrapper',
-        });
-        wrapper.css('width', '1px');
-        wrapper.css('heigh', '1px');
-        wrapper.hide();
-
-        var callerID = $('<div />', {
-          class: 'callerID',
-        });
-        wrapper.append(callerID);
-
-        var Actions = $('<div />', {
-          class: 'Actions',
-        });
-        wrapper.append(Actions);
-
-        var videoEl = $('<video />', {
-          id: remoteVideoStreamTrack.id,
-          mid: remoteVideoStreamTrack.mid,
-          muted: true,
-          autoplay: true,
-          playsinline: true,
-          controls: false,
-        });
-        videoEl.hide();
-
-        var videoObj = videoEl.get(0);
-        videoObj.srcObject = thisRemoteVideoStream;
-        videoObj.onloadedmetadata = function (e) {
-          // videoObj.play();
-          videoEl.show();
-          videoEl.parent().show();
-          console.log('Playing Video Stream MID:', thisRemoteVideoStream.mid);
-          RedrawStage(lineObj.LineNumber, true);
-        };
-        wrapper.append(videoEl);
-
-        $('#line-' + lineObj.LineNumber + '-remote-videos').append(wrapper);
-
-        console.log('Added Video Element MID:', thisRemoteVideoStream.mid);
-      });
-    } else {
-      console.log('No Video Streams');
-      RedrawStage(lineObj.LineNumber, true);
-    }
-  }
-
-  // Custom Web hook
-  if (typeof web_hook_on_modify !== 'undefined') web_hook_on_modify('trackAdded', session);
 }
 
 function onInviteAccepted(lineObj, includeVideo, response) {
@@ -3039,10 +2961,12 @@ function ReceiveCall(session) {
       onSessionReceivedBye(lineObj, sip);
     },
     onMessage: function (sip) {
-      onSessionReceivedMessage(lineObj, sip);
+      console.log(sip, '----------------sip in onMessage');
+      // onSessionReceivedMessage(lineObj, sip);
     },
     onInvite: function (sip) {
-      onSessionReinvited(lineObj, sip);
+      console.log(sip, '----------------sip in onInvite');
+      // onSessionReinvited(lineObj, sip);
     },
     onSessionDescriptionHandler: function (sdh, provisional) {
       onSessionDescriptionHandlerCreated(lineObj, sdh, provisional, lineObj.SipSession.data.withvideo);
