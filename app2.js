@@ -32,35 +32,7 @@ $(document).ready(function () {
     dialText = lsDialText;
     $('#dialText').val(lsDialText);
   }
-
-  DetectDevices();
 });
-
-function DetectDevices() {
-  navigator.mediaDevices
-    .enumerateDevices()
-    .then(function (deviceInfos) {
-      console.log(deviceInfos, '---------deviceInfos');
-      HasAudioDevice = false;
-      HasSpeakerDevice = false; // Safari and Firefox don't have these
-      AudioinputDevices = [];
-      SpeakerDevices = [];
-      for (var i = 0; i < deviceInfos.length; ++i) {
-        if (deviceInfos[i].kind === 'audioinput') {
-          HasAudioDevice = true;
-          AudioinputDevices.push(deviceInfos[i]);
-        } else if (deviceInfos[i].kind === 'audiooutput') {
-          HasSpeakerDevice = true;
-          SpeakerDevices.push(deviceInfos[i]);
-        }
-      }
-      var supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
-      console.log(supportedConstraints, '-------supportedConstraints');
-    })
-    .catch(function (e) {
-      console.error('Error enumerating devices', e);
-    });
-}
 
 function makeRegister() {
   if ($('#username').val()) {
@@ -98,7 +70,6 @@ function register() {
     authorizationUsername: SipUsername,
     authorizationPassword: SipPassword,
     logConfiguration: false,
-    // userAgentString: '',
     hackIpInContact: true,
     autoStart: false,
     autoStop: true,
@@ -120,10 +91,10 @@ function register() {
         // Nothing to do
         break;
       case SIP.RegistererState.Registered:
-        onRegistered();
+        $('#regStatus').html('Registered');
         break;
       case SIP.RegistererState.Unregistered:
-        onUnregistered();
+        $('#regStatus').html('Unregistered, bye!');
         break;
       case SIP.RegistererState.Terminated:
         // Nothing to do
@@ -140,24 +111,6 @@ function register() {
     .catch((error) => {
       console.error('Registration failed:', error);
     });
-}
-
-function onRegistered() {
-  userAgent.registrationCompleted = true;
-  if (!userAgent.isReRegister) {
-    console.log('Registered!');
-    // Output to status
-    $('#regStatus').html('Registered');
-    // Start Subscribe Loop
-    // window.setTimeout(function () {
-    //   SubscribeAll();
-    // }, 500);
-    userAgent.registering = false;
-  } else {
-    userAgent.registering = false;
-    console.log('ReRegistered!');
-  }
-  userAgent.isReRegister = true;
 }
 
 function AddLineHtml() {
