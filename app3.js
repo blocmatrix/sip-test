@@ -11,7 +11,7 @@ let SipDomain = 'pbx-2.testd.com'; // eg: raspberrypi.local
 let SipUsername = 'User1'; // eg: webrtc
 let SipPassword = '1234'; // eg: webrtc
 
-const appversion = '3.4';
+const appversion = '3.5';
 const sipjsversion = '0.20.0';
 const navUserAgent = window.navigator.userAgent;
 const localDB = window.localStorage;
